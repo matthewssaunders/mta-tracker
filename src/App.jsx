@@ -95,7 +95,7 @@ const App = () => {
           </div>
           <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase">SubwayPulse</h1>
         </div>
-        <button onClick={fetchRealtimeData} className={`${loading ? 'animate-spin' : ''} text-zinc-500`}>
+        <button onClick={fetchRealtimeData} className={`${loading ? 'animate-spin' : 'hover:text-white'} text-zinc-500 transition-colors`}>
           <RefreshCw size={20} />
         </button>
       </div>
@@ -104,13 +104,18 @@ const App = () => {
         {/* Station Picker */}
         <div className="mb-8">
           <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Track Station</label>
-          <select 
-            className="w-full bg-zinc-900 border border-zinc-800 text-white p-4 rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none"
-            value={selectedStop.id}
-            onChange={(e) => setSelectedStop(STATIONS.find(s => s.id === e.target.value))}
-          >
-            {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <div className="relative">
+            <select 
+              className="w-full bg-zinc-900 border border-zinc-800 text-white p-4 rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none cursor-pointer"
+              value={selectedStop.id}
+              onChange={(e) => setSelectedStop(STATIONS.find(s => s.id === e.target.value))}
+            >
+              {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
+              <MapPin size={18} />
+            </div>
+          </div>
         </div>
 
         {/* Live Boards - Stacks in portrait, side-by-side in landscape */}
@@ -118,17 +123,25 @@ const App = () => {
           {/* Uptown Section */}
           <div className="flex-1">
             <h2 className="flex items-center gap-2 text-white font-black uppercase italic mb-4 border-b border-zinc-800 pb-2">
-              <ArrowUpCircle size={18} className="text-zinc-500" /> Uptown
+              <ArrowUpCircle size={18} className="text-zinc-500" /> Uptown / Northbound
             </h2>
-            {trains.uptown.map(t => <TrainRow key={t.id} train={t} />)}
+            {trains.uptown.length > 0 ? (
+              trains.uptown.map(t => <TrainRow key={t.id} train={t} />)
+            ) : (
+              <div className="p-8 text-center text-zinc-600 italic">No upcoming trains found</div>
+            )}
           </div>
 
           {/* Downtown Section */}
           <div className="flex-1">
             <h2 className="flex items-center gap-2 text-white font-black uppercase italic mb-4 border-b border-zinc-800 pb-2">
-              <ArrowDownCircle size={18} className="text-zinc-500" /> Downtown
+              <ArrowDownCircle size={18} className="text-zinc-500" /> Downtown / Southbound
             </h2>
-            {trains.downtown.map(t => <TrainRow key={t.id} train={t} />)}
+            {trains.downtown.length > 0 ? (
+              trains.downtown.map(t => <TrainRow key={t.id} train={t} />)
+            ) : (
+              <div className="p-8 text-center text-zinc-600 italic">No upcoming trains found</div>
+            )}
           </div>
         </div>
 
