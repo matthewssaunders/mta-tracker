@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
+import ReactDOM from 'react-dom/client'
 import { 
   Train, MapPin, Clock, AlertTriangle, 
   ArrowUpCircle, ArrowDownCircle, RefreshCw 
-} from 'lucide-react';
+} from 'lucide-react'
 
 // Official MTA Subway Colors
 const LINE_COLORS = {
@@ -32,11 +33,8 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Simulation of real-time data for the demo
-  // In production, fetch from your Cloudflare Worker URL
   const fetchRealtimeData = async () => {
     setLoading(true);
-    // Mimic API delay
     await new Promise(r => setTimeout(r, 600));
     
     const lines = selectedStop.lines;
@@ -87,7 +85,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 font-sans p-4 pb-20">
-      {/* Header */}
       <div className="max-w-4xl mx-auto flex items-center justify-between mb-8 pt-4">
         <div className="flex items-center gap-2">
           <div className="bg-white p-1 rounded">
@@ -101,14 +98,16 @@ const App = () => {
       </div>
 
       <div className="max-w-4xl mx-auto">
-        {/* Station Picker */}
         <div className="mb-8">
           <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Track Station</label>
           <div className="relative">
             <select 
               className="w-full bg-zinc-900 border border-zinc-800 text-white p-4 rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none cursor-pointer"
               value={selectedStop.id}
-              onChange={(e) => setSelectedStop(STATIONS.find(s => s.id === e.target.value))}
+              onChange={(e) => {
+                const stop = STATIONS.find(s => s.id === e.target.value);
+                if (stop) setSelectedStop(stop);
+              }}
             >
               {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -118,9 +117,7 @@ const App = () => {
           </div>
         </div>
 
-        {/* Live Boards - Stacks in portrait, side-by-side in landscape */}
         <div className="flex flex-col md:flex-row gap-8 mb-12">
-          {/* Uptown Section */}
           <div className="flex-1">
             <h2 className="flex items-center gap-2 text-white font-black uppercase italic mb-4 border-b border-zinc-800 pb-2">
               <ArrowUpCircle size={18} className="text-zinc-500" /> Uptown / Northbound
@@ -132,7 +129,6 @@ const App = () => {
             )}
           </div>
 
-          {/* Downtown Section */}
           <div className="flex-1">
             <h2 className="flex items-center gap-2 text-white font-black uppercase italic mb-4 border-b border-zinc-800 pb-2">
               <ArrowDownCircle size={18} className="text-zinc-500" /> Downtown / Southbound
@@ -145,7 +141,6 @@ const App = () => {
           </div>
         </div>
 
-        {/* Alerts Section - Always below boards */}
         {trains.alerts.length > 0 && (
           <div className="mt-8">
             <h2 className="flex items-center gap-2 text-orange-500 font-black uppercase italic mb-4">
@@ -164,7 +159,6 @@ const App = () => {
         )}
       </div>
 
-      {/* Footer Meta */}
       <footer className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-lg border-t border-zinc-900 p-3">
         <div className="max-w-4xl mx-auto flex justify-between items-center text-[10px] font-bold text-zinc-600 uppercase">
           <div className="flex items-center gap-2">
@@ -178,4 +172,26 @@ const App = () => {
   );
 };
 
-export default App;
+// Inline Tailwind setup for the environment
+if (typeof document !== 'undefined') {
+  const tailwindStyles = document.createElement('style');
+  tailwindStyles.textContent = `
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+    body { margin: 0; background-color: #000; color: #fff; }
+  `;
+  document.head.appendChild(tailwindStyles);
+}
+
+// Fixed the root initialization to prevent "reading properties of undefined" errors 
+// caused by environment-specific React DOM version mismatches.
+const rootElement = document.getElementById('root');
+if (rootElement && !rootElement._reactRootContainer) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
