@@ -30,6 +30,16 @@ const App = () => {
   const [trains, setTrains] = useState({ uptown: [], downtown: [], alerts: [] });
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Handle responsiveness via JS state for absolute reliability
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    document.body.style.backgroundColor = '#000';
+    document.body.style.margin = '0';
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchRealtimeData = async () => {
     setLoading(true);
@@ -61,239 +71,106 @@ const App = () => {
     return () => clearInterval(timer);
   }, [selectedStop]);
 
-  return (
-    <div className="subway-app">
-      <style>{`
-        /* Global Reset to force styles */
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-        }
-        html, body {
-          background-color: #000 !important;
-          color: #e5e5e5 !important;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-        }
-        .subway-app {
-          min-height: 100vh;
-          background-color: #000;
-          padding: 20px;
-          padding-bottom: 80px;
-        }
-        .header {
-          max-width: 900px;
-          margin: 0 auto 30px auto;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .logo-box {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .mta-icon {
-          background: #fff;
-          padding: 6px;
-          border-radius: 6px;
-          color: #000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .logo-text {
-          font-size: 24px;
-          font-weight: 900;
-          font-style: italic;
-          text-transform: uppercase;
-          letter-spacing: -1px;
-          color: #fff;
-        }
-        .station-picker {
-          max-width: 900px;
-          margin: 0 auto 40px auto;
-        }
-        .label {
-          font-size: 10px;
-          font-weight: bold;
-          color: #666;
-          text-transform: uppercase;
-          letter-spacing: 2px;
-          margin-bottom: 10px;
-          display: block;
-        }
-        .select-wrapper {
-          position: relative;
-        }
-        select {
-          width: 100%;
-          background: #111;
-          border: 1px solid #333;
-          color: #fff;
-          padding: 18px;
-          border-radius: 14px;
-          font-size: 18px;
-          font-weight: bold;
-          appearance: none;
-          cursor: pointer;
-          transition: border-color 0.2s;
-        }
-        select:focus {
-          border-color: #555;
-          outline: none;
-        }
-        .board-container {
-          max-width: 900px;
-          margin: 0 auto;
-          display: flex;
-          flex-direction: column;
-          gap: 30px;
-        }
-        @media (min-width: 768px) {
-          .board-container { flex-direction: row; }
-        }
-        .column { flex: 1; }
-        .col-header {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-weight: 900;
-          text-transform: uppercase;
-          font-style: italic;
-          border-bottom: 2px solid #222;
-          padding-bottom: 12px;
-          margin-bottom: 20px;
-          color: #fff;
-          font-size: 18px;
-        }
-        .train-card {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: #111;
-          margin-bottom: 14px;
-          padding: 14px 18px;
-          border-radius: 0 10px 10px 0;
-          border-left: 6px solid #888;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        .bullet {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 800;
-          color: #fff;
-          font-size: 20px;
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .train-info { display: flex; align-items: center; gap: 15px; }
-        .dest { font-weight: 700; color: #fff; font-size: 16px; }
-        .delay-tag { color: #f97316; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-top: 2px; }
-        .eta { text-align: right; }
-        .eta-val { font-size: 28px; font-weight: 900; color: #fff; line-height: 1; }
-        .eta-unit { font-size: 10px; color: #666; font-weight: bold; display: block; margin-top: 2px; }
-        .alert-box {
-          margin-top: 50px;
-          max-width: 900px;
-          margin-left: auto;
-          margin-right: auto;
-        }
-        .alert-item {
-          background: rgba(249, 115, 22, 0.08);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          padding: 18px;
-          border-radius: 14px;
-          display: flex;
-          gap: 15px;
-          align-items: flex-start;
-          margin-bottom: 15px;
-        }
-        .footer {
-          position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          background: rgba(0,0,0,0.9);
-          backdrop-filter: blur(15px);
-          padding: 15px;
-          border-top: 1px solid #111;
-          font-size: 10px;
-          font-weight: 800;
-          color: #555;
-          text-transform: uppercase;
-          display: flex;
-          justify-content: space-around;
-          letter-spacing: 1px;
-        }
-        .live-indicator { display: flex; align-items: center; gap: 8px; color: #22c55e; }
-        .dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e; }
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+  // Styles Object
+  const s = {
+    app: {
+      minHeight: '100vh',
+      backgroundColor: '#000',
+      color: '#e5e5e5',
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      padding: '20px',
+      paddingBottom: '100px',
+    },
+    header: {
+      maxWidth: '900px',
+      margin: '0 auto 30px auto',
+      display: 'flex',
+      justifyContent: spaceBetween('header'),
+      alignItems: 'center',
+    },
+    logoBox: { display: 'flex', alignItems: 'center', gap: '12px' },
+    mtaIcon: { background: '#fff', padding: '6px', borderRadius: '6px', color: '#000', display: 'flex' },
+    logoText: { fontSize: '24px', fontWeight: '900', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', color: '#fff' },
+    picker: { maxWidth: '900px', margin: '0 auto 40px auto' },
+    label: { fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px', display: 'block' },
+    select: { width: '100%', background: '#111', border: '1px solid #333', color: '#fff', padding: '18px', borderRadius: '14px', fontSize: '18px', fontWeight: 'bold', outline: 'none' },
+    container: { maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '30px' },
+    column: { flex: 1 },
+    colHeader: { display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic', borderBottom: '2px solid #222', paddingBottom: '12px', marginBottom: '20px', color: '#fff', fontSize: '18px' },
+    card: (color) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', marginBottom: '14px', padding: '14px 18px', borderRadius: '0 10px 10px 0', borderLeft: `6px solid ${color}`, boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }),
+    bullet: (color, size = 40) => ({ width: `${size}px`, height: `${size}px`, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justify: 'center', fontWeight: '800', color: '#fff', fontSize: size === 40 ? '20px' : '14px', flexShrink: 0, justifyContent: 'center' }),
+    info: { display: 'flex', alignItems: 'center', gap: '15px' },
+    dest: { fontWeight: '700', color: '#fff', fontSize: '16px' },
+    delay: { color: '#f97316', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginTop: '2px' },
+    eta: { textAlign: 'right' },
+    etaVal: { fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 },
+    etaUnit: { fontSize: '10px', color: '#666', fontWeight: 'bold', display: 'block', marginTop: '2px' },
+    alertBox: { marginTop: '50px', maxWidth: '900px', marginLeft: 'auto', marginRight: 'auto' },
+    alertItem: { background: 'rgba(249, 115, 22, 0.08)', border: '1px solid rgba(249, 115, 22, 0.2)', padding: '18px', borderRadius: '14px', display: 'flex', gap: '15px', marginBottom: '15px' },
+    footer: { position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.95)', padding: '15px', borderTop: '1px solid #111', fontSize: '10px', fontWeight: '800', color: '#555', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-around' },
+  };
 
-      <div className="header">
-        <div className="logo-box">
-          <div className="mta-icon"><Train size={24} /></div>
-          <div className="logo-text">SubwayPulse</div>
+  function spaceBetween(el) { return 'space-between'; }
+
+  return (
+    <div style={s.app}>
+      <div style={s.header}>
+        <div style={s.logoBox}>
+          <div style={s.mtaIcon}><Train size={24} /></div>
+          <div style={s.logoText}>SubwayPulse</div>
         </div>
         <RefreshCw 
           size={22} 
-          className={loading ? 'spin' : ''} 
+          style={{ cursor: 'pointer', color: '#888', animation: loading ? 'spin 1s linear infinite' : 'none' }} 
           onClick={fetchRealtimeData}
-          style={{ cursor: 'pointer', color: '#888' }}
         />
       </div>
 
-      <div className="station-picker">
-        <span className="label">Station Monitor</span>
-        <div className="select-wrapper">
-          <select 
-            value={selectedStop.id}
-            onChange={(e) => setSelectedStop(STATIONS.find(s => s.id === e.target.value))}
-          >
-            {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
+      <div style={s.picker}>
+        <span style={s.label}>Station Monitor</span>
+        <select 
+          style={s.select}
+          value={selectedStop.id}
+          onChange={(e) => setSelectedStop(STATIONS.find(s => s.id === e.target.value))}
+        >
+          {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
       </div>
 
-      <div className="board-container">
-        <div className="column">
-          <div className="col-header"><ArrowUpCircle size={20}/> Uptown</div>
+      <div style={s.container}>
+        <div style={s.column}>
+          <div style={s.colHeader}><ArrowUpCircle size={20}/> Uptown</div>
           {trains.uptown.map(t => (
-            <div key={t.id} className="train-card" style={{ borderLeftColor: LINE_COLORS[t.line] }}>
-              <div className="train-info">
-                <div className="bullet" style={{ backgroundColor: LINE_COLORS[t.line] }}>{t.line}</div>
+            <div key={t.id} style={s.card(LINE_COLORS[t.line])}>
+              <div style={s.info}>
+                <div style={s.bullet(LINE_COLORS[t.line])}>{t.line}</div>
                 <div>
-                  <div className="dest">{t.dest}</div>
-                  {t.delayed && <div className="delay-tag">Delayed</div>}
+                  <div style={s.dest}>{t.dest}</div>
+                  {t.delayed && <div style={s.delay}>Delayed</div>}
                 </div>
               </div>
-              <div className="eta">
-                <span className="eta-val">{t.mins}</span>
-                <span className="eta-unit">MINS</span>
+              <div style={s.eta}>
+                <span style={s.etaVal}>{t.mins}</span>
+                <span style={s.etaUnit}>MINS</span>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="column">
-          <div className="col-header"><ArrowDownCircle size={20}/> Downtown</div>
+        <div style={s.column}>
+          <div style={s.colHeader}><ArrowDownCircle size={20}/> Downtown</div>
           {trains.downtown.map(t => (
-            <div key={t.id} className="train-card" style={{ borderLeftColor: LINE_COLORS[t.line] }}>
-              <div className="train-info">
-                <div className="bullet" style={{ backgroundColor: LINE_COLORS[t.line] }}>{t.line}</div>
+            <div key={t.id} style={s.card(LINE_COLORS[t.line])}>
+              <div style={s.info}>
+                <div style={s.bullet(LINE_COLORS[t.line])}>{t.line}</div>
                 <div>
-                  <div className="dest">{t.dest}</div>
-                  {t.delayed && <div className="delay-tag">Delayed</div>}
+                  <div style={s.dest}>{t.dest}</div>
+                  {t.delayed && <div style={s.delay}>Delayed</div>}
                 </div>
               </div>
-              <div className="eta">
-                <span className="eta-val">{t.mins}</span>
-                <span className="eta-unit">MINS</span>
+              <div style={s.eta}>
+                <span style={s.etaVal}>{t.mins}</span>
+                <span style={s.etaUnit}>MINS</span>
               </div>
             </div>
           ))}
@@ -301,21 +178,28 @@ const App = () => {
       </div>
 
       {trains.alerts.length > 0 && (
-        <div className="alert-box">
-          <span className="label" style={{ color: '#f97316' }}>Service Alerts</span>
+        <div style={s.alertBox}>
+          <span style={s.label}>Service Alerts</span>
           {trains.alerts.map(a => (
-            <div key={a.id} className="alert-item">
-              <div className="bullet" style={{ backgroundColor: LINE_COLORS[a.line], width: 28, height: 28, fontSize: 14, flexShrink: 0 }}>{a.line}</div>
-              <div style={{ fontSize: 14, lineHeight: 1.5, color: '#ccc' }}>{a.msg}</div>
+            <div key={a.id} style={s.alertItem}>
+              <div style={s.bullet(LINE_COLORS[a.line], 28)}>{a.line}</div>
+              <div style={{ fontSize: '14px', lineHeight: '1.5', color: '#ccc' }}>{a.msg}</div>
             </div>
           ))}
         </div>
       )}
 
-      <div className="footer">
-        <div className="live-indicator"><div className="dot" /> Live Feed</div>
+      <div style={s.footer}>
+        <div style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '8px', height: '8px', background: '#22c55e', borderRadius: '50%' }} /> Live Feed
+        </div>
         <div>Updated: {lastUpdated ? lastUpdated.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '--'}</div>
       </div>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        body { margin: 0; padding: 0; background-color: #000; }
+      `}</style>
     </div>
   );
 };
