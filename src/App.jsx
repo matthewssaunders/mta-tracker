@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import ReactDOM from 'react-dom/client'
+import React, { useState, useEffect } from 'react';
 import { 
-  Train, MapPin, Clock, AlertTriangle, 
+  Train, MapPin, AlertTriangle, 
   ArrowUpCircle, ArrowDownCircle, RefreshCw 
-} from 'lucide-react'
+} from 'lucide-react';
 
-// Official MTA Subway Colors
 const LINE_COLORS = {
   '1': '#EE352E', '2': '#EE352E', '3': '#EE352E',
   '4': '#00933C', '5': '#00933C', '6': '#00933C',
@@ -63,135 +61,240 @@ const App = () => {
     return () => clearInterval(timer);
   }, [selectedStop]);
 
-  const TrainRow = ({ train }) => (
-    <div className="flex items-center justify-between p-4 mb-3 bg-zinc-900/50 border-l-4 rounded-r-lg"
-         style={{ borderLeftColor: LINE_COLORS[train.line] || '#808183' }}>
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xl shadow-inner"
-             style={{ backgroundColor: LINE_COLORS[train.line] || '#808183' }}>
-          {train.line}
-        </div>
-        <div>
-          <div className="text-zinc-100 font-semibold">{train.dest}</div>
-          {train.delayed && <div className="text-[10px] text-orange-500 font-bold uppercase tracking-widest">Delayed</div>}
-        </div>
-      </div>
-      <div className="text-right">
-        <span className="text-2xl font-black text-white">{train.mins}</span>
-        <span className="text-[10px] text-zinc-500 ml-1 font-bold">MIN</span>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-black text-zinc-300 font-sans p-4 pb-20">
-      <div className="max-w-4xl mx-auto flex items-center justify-between mb-8 pt-4">
-        <div className="flex items-center gap-2">
-          <div className="bg-white p-1 rounded">
-            <Train className="text-black" size={24} />
-          </div>
-          <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase">SubwayPulse</h1>
+    <div className="subway-app">
+      <style>{`
+        .subway-app {
+          min-height: 100vh;
+          background-color: #000;
+          color: #e5e5e5;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          padding: 20px;
+          padding-bottom: 80px;
+        }
+        .header {
+          max-width: 900px;
+          margin: 0 auto 30px auto;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .logo-box {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .mta-icon {
+          background: #fff;
+          padding: 4px;
+          border-radius: 4px;
+          color: #000;
+        }
+        .logo-text {
+          font-size: 24px;
+          font-weight: 900;
+          font-style: italic;
+          text-transform: uppercase;
+          letter-spacing: -1px;
+          color: #fff;
+        }
+        .station-picker {
+          max-width: 900px;
+          margin: 0 auto 40px auto;
+        }
+        .label {
+          font-size: 10px;
+          font-weight: bold;
+          color: #666;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          margin-bottom: 8px;
+          display: block;
+        }
+        .select-wrapper {
+          position: relative;
+        }
+        select {
+          width: 100%;
+          background: #111;
+          border: 1px solid #222;
+          color: #fff;
+          padding: 16px;
+          border-radius: 12px;
+          font-size: 18px;
+          font-weight: bold;
+          appearance: none;
+          cursor: pointer;
+        }
+        .board-container {
+          max-width: 900px;
+          margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+        }
+        @media (min-width: 768px) {
+          .board-container { flex-direction: row; }
+        }
+        .column { flex: 1; }
+        .col-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 900;
+          text-transform: uppercase;
+          font-style: italic;
+          border-bottom: 1px solid #222;
+          padding-bottom: 10px;
+          margin-bottom: 15px;
+          color: #fff;
+        }
+        .train-card {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: #111;
+          margin-bottom: 12px;
+          padding: 12px 16px;
+          border-radius: 0 8px 8px 0;
+          border-left: 5px solid #888;
+        }
+        .bullet {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          color: #fff;
+          font-size: 18px;
+        }
+        .train-info { display: flex; align-items: center; gap: 15px; }
+        .dest { font-weight: 600; color: #fff; }
+        .delay-tag { color: #f97316; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .eta { text-align: right; }
+        .eta-val { font-size: 24px; font-weight: 900; color: #fff; }
+        .eta-unit { font-size: 10px; color: #666; font-weight: bold; margin-left: 4px; }
+        .alert-box {
+          margin-top: 40px;
+          max-width: 900px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .alert-item {
+          background: rgba(249, 115, 22, 0.1);
+          border: 1px solid rgba(249, 115, 22, 0.2);
+          padding: 15px;
+          border-radius: 12px;
+          display: flex;
+          gap: 15px;
+        }
+        .footer {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(0,0,0,0.8);
+          backdrop-filter: blur(10px);
+          padding: 12px;
+          border-top: 1px solid #111;
+          font-size: 10px;
+          font-weight: bold;
+          color: #444;
+          text-transform: uppercase;
+          display: flex;
+          justify-content: space-around;
+        }
+        .live-indicator { display: flex; align-items: center; gap: 6px; color: #22c55e; }
+        .dot { width: 6px; height: 6px; background: #22c55e; border-radius: 50%; }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
+
+      <div className="header">
+        <div className="logo-box">
+          <div className="mta-icon"><Train size={20} /></div>
+          <div className="logo-text">SubwayPulse</div>
         </div>
-        <button onClick={fetchRealtimeData} className={`${loading ? 'animate-spin' : 'hover:text-white'} text-zinc-500 transition-colors`}>
-          <RefreshCw size={20} />
-        </button>
+        <RefreshCw 
+          size={20} 
+          className={loading ? 'spin' : ''} 
+          onClick={fetchRealtimeData}
+          style={{ cursor: 'pointer', color: '#666' }}
+        />
       </div>
 
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Track Station</label>
-          <div className="relative">
-            <select 
-              className="w-full bg-zinc-900 border border-zinc-800 text-white p-4 rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none cursor-pointer"
-              value={selectedStop.id}
-              onChange={(e) => {
-                const stop = STATIONS.find(s => s.id === e.target.value);
-                if (stop) setSelectedStop(stop);
-              }}
-            >
-              {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
-              <MapPin size={18} />
-            </div>
-          </div>
+      <div className="station-picker">
+        <span className="label">Station Monitor</span>
+        <div className="select-wrapper">
+          <select 
+            value={selectedStop.id}
+            onChange={(e) => setSelectedStop(STATIONS.find(s => s.id === e.target.value))}
+          >
+            {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
         </div>
+      </div>
 
-        <div className="flex flex-col md:flex-row gap-8 mb-12">
-          <div className="flex-1">
-            <h2 className="flex items-center gap-2 text-white font-black uppercase italic mb-4 border-b border-zinc-800 pb-2">
-              <ArrowUpCircle size={18} className="text-zinc-500" /> Uptown / Northbound
-            </h2>
-            {trains.uptown.length > 0 ? (
-              trains.uptown.map(t => <TrainRow key={t.id} train={t} />)
-            ) : (
-              <div className="p-8 text-center text-zinc-600 italic">No upcoming trains found</div>
-            )}
-          </div>
-
-          <div className="flex-1">
-            <h2 className="flex items-center gap-2 text-white font-black uppercase italic mb-4 border-b border-zinc-800 pb-2">
-              <ArrowDownCircle size={18} className="text-zinc-500" /> Downtown / Southbound
-            </h2>
-            {trains.downtown.length > 0 ? (
-              trains.downtown.map(t => <TrainRow key={t.id} train={t} />)
-            ) : (
-              <div className="p-8 text-center text-zinc-600 italic">No upcoming trains found</div>
-            )}
-          </div>
-        </div>
-
-        {trains.alerts.length > 0 && (
-          <div className="mt-8">
-            <h2 className="flex items-center gap-2 text-orange-500 font-black uppercase italic mb-4">
-              <AlertTriangle size={18} /> Service Alerts
-            </h2>
-            {trains.alerts.map(alert => (
-              <div key={alert.id} className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-xl flex gap-4 mb-4">
-                <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white text-sm"
-                     style={{ backgroundColor: LINE_COLORS[alert.line] }}>
-                  {alert.line}
+      <div className="board-container">
+        <div className="column">
+          <div className="col-header"><ArrowUpCircle size={18}/> Uptown</div>
+          {trains.uptown.map(t => (
+            <div key={t.id} className="train-card" style={{ borderLeftColor: LINE_COLORS[t.line] }}>
+              <div className="train-info">
+                <div className="bullet" style={{ backgroundColor: LINE_COLORS[t.line] }}>{t.line}</div>
+                <div>
+                  <div className="dest">{t.dest}</div>
+                  {t.delayed && <div className="delay-tag">Delayed</div>}
                 </div>
-                <p className="text-sm text-zinc-100 leading-relaxed">{alert.msg}</p>
               </div>
-            ))}
-          </div>
-        )}
+              <div className="eta">
+                <span className="eta-val">{t.mins}</span>
+                <span className="eta-unit">MIN</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="column">
+          <div className="col-header"><ArrowDownCircle size={18}/> Downtown</div>
+          {trains.downtown.map(t => (
+            <div key={t.id} className="train-card" style={{ borderLeftColor: LINE_COLORS[t.line] }}>
+              <div className="train-info">
+                <div className="bullet" style={{ backgroundColor: LINE_COLORS[t.line] }}>{t.line}</div>
+                <div>
+                  <div className="dest">{t.dest}</div>
+                  {t.delayed && <div className="delay-tag">Delayed</div>}
+                </div>
+              </div>
+              <div className="eta">
+                <span className="eta-val">{t.mins}</span>
+                <span className="eta-unit">MIN</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-lg border-t border-zinc-900 p-3">
-        <div className="max-w-4xl mx-auto flex justify-between items-center text-[10px] font-bold text-zinc-600 uppercase">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Live Feed: trains.matthewssaunders.com
-          </div>
-          <div>Updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}</div>
+      {trains.alerts.length > 0 && (
+        <div className="alert-box">
+          <span className="label" style={{ color: '#f97316' }}>Service Alerts</span>
+          {trains.alerts.map(a => (
+            <div key={a.id} className="alert-item">
+              <div className="bullet" style={{ backgroundColor: LINE_COLORS[a.line], width: 24, height: 24, fontSize: 12 }}>{a.line}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.4 }}>{a.msg}</div>
+            </div>
+          ))}
         </div>
-      </footer>
+      )}
+
+      <div className="footer">
+        <div className="live-indicator"><div className="dot" /> Live System Feed</div>
+        <div>Updated: {lastUpdated ? lastUpdated.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--'}</div>
+      </div>
     </div>
   );
 };
 
-// Inline Tailwind setup for the environment
-if (typeof document !== 'undefined') {
-  const tailwindStyles = document.createElement('style');
-  tailwindStyles.textContent = `
-    @tailwind base;
-    @tailwind components;
-    @tailwind utilities;
-    body { margin: 0; background-color: #000; color: #fff; }
-  `;
-  document.head.appendChild(tailwindStyles);
-}
-
-// Fixed the root initialization to prevent "reading properties of undefined" errors 
-// caused by environment-specific React DOM version mismatches.
-const rootElement = document.getElementById('root');
-if (rootElement && !rootElement._reactRootContainer) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
-}
+export default App;
