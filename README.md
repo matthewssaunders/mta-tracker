@@ -1,1 +1,69 @@
-SubwayPulse PWA: Cloudflare Setup GuideThis guide details how to build and deploy your MTA tracker starting from a blank Cloudflare account, specifically optimized for Chromebook users.🚀 Step 1: Create the GitHub RepositoryGo to GitHub and create a new repository named mta-tracker.Keep it Public and initialize it with a README.md.In the repository view, press the . key on your keyboard to open the GitHub Web Editor.Create a folder named src and a file inside it named App.jsx. Paste the React code provided in our conversation into that file.🛠 Step 2: Deploy the Backend (Cloudflare Workers)The MTA API requires a secret key and returns complex data that browsers can't read directly. The Worker acts as your "translator."Log in to your Cloudflare Dashboard.Navigate to Compute (Workers & Pages) > Create application > Worker.Name it mta-api-proxy and click Deploy.Click Edit Code and paste the proxy logic (using gtfs-realtime-bindings).Add your API Key:Go to the Worker's Settings tab > Variables.Under Environment Variables, click Add variable.Name: MTA_API_KEY | Value: [Your actual MTA API Key]Click Save and deploy.🌐 Step 3: Deploy the Frontend (Cloudflare Pages)In the Cloudflare Dashboard, go back to Workers & Pages > Create application > Pages.Select Connect to Git and choose your mta-tracker repository.Build Settings:Framework preset: ViteBuild command: npm run buildOutput directory: distClick Save and Deploy. Cloudflare will now pull your code from GitHub and build the site.📱 Step 4: Final Domain & PWA ConfigCustom Domain: Under the Pages project Custom domains tab, add trains.matthewssaunders.com. Cloudflare will handle the SSL/HTTPS automatically.PWA Setup: Ensure you have a manifest.json in your public folder so your Chromebook and phone see it as an "Installable App."🎨 Design & Logic RemindersColor Scheme: High-contrast black background with official MTA line colors.Responsiveness: Horizontal view displays Uptown/Downtown side-by-side; Vertical stacks them.Alerts: Service notifications are automatically pinned to the bottom of the dashboard.📄 LicenseMIT
+SubwayPulse PWA: Cloudflare Setup Guide
+
+This guide details how to build and deploy your MTA tracker starting from a blank Cloudflare account, specifically optimized for Chromebook users.
+
+🚀 Step 1: Create the GitHub Repository
+
+Go to GitHub and create a new repository named mta-tracker.
+
+Keep it Public and initialize it with a README.md.
+
+In the repository view, press the . key on your keyboard to open the GitHub Web Editor.
+
+Create a folder named src and a file inside it named App.jsx. Paste the React code provided in our conversation into that file.
+
+🛠 Step 2: Deploy the Backend (Cloudflare Workers)
+
+The MTA API requires a secret key and returns complex data that browsers can't read directly. The Worker acts as your "translator."
+
+Log in to your Cloudflare Dashboard.
+
+Navigate to Compute (Workers & Pages) > Create application > Worker.
+
+Name it mta-api-proxy and click Deploy.
+
+Click Edit Code and paste the proxy logic (using gtfs-realtime-bindings).
+
+Add your API Key:
+
+Go to the Worker's Settings tab > Variables.
+
+Under Environment Variables, click Add variable.
+
+Name: MTA_API_KEY | Value: [Your actual MTA API Key]
+
+Click Save and deploy.
+
+🌐 Step 3: Deploy the Frontend (Cloudflare Pages)
+
+In the Cloudflare Dashboard, go back to Workers & Pages > Create application > Pages.
+
+Select Connect to Git and choose your mta-tracker repository.
+
+Build Settings:
+
+Framework preset: Vite
+
+Build command: npm run build
+
+Output directory: dist
+
+Click Save and Deploy. Cloudflare will now pull your code from GitHub and build the site.
+
+📱 Step 4: Final Domain & PWA Config
+
+Custom Domain: Under the Pages project Custom domains tab, add trains.matthewssaunders.com. Cloudflare will handle the SSL/HTTPS automatically.
+
+PWA Setup: Ensure you have a manifest.json in your public folder so your Chromebook and phone see it as an "Installable App."
+
+🎨 Design & Logic Reminders
+
+Color Scheme: High-contrast black background with official MTA line colors.
+
+Responsiveness: Horizontal view displays Uptown/Downtown side-by-side; Vertical stacks them.
+
+Alerts: Service notifications are automatically pinned to the bottom of the dashboard.
+
+📄 License
+
+MIT
