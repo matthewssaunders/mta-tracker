@@ -35,6 +35,33 @@ const FEED_MAP = {
   '7': 'gtfs-7'
 };
 
+// Map of typical final terminals for NYC Subway lines
+const TERMINAL_MAP = {
+  '1': { N: 'Van Cortlandt Pk-242 St', S: 'South Ferry' },
+  '2': { N: 'Wakefield-241 St', S: 'Flatbush Av-Brooklyn Coll' },
+  '3': { N: 'Harlem-148 St', S: 'New Lots Av' },
+  '4': { N: 'Woodlawn', S: 'Crown Hts-Utica Av' },
+  '5': { N: 'Eastchester-Dyre Av', S: 'Flatbush Av-Brooklyn Coll' },
+  '6': { N: 'Pelham Bay Park', S: 'Brooklyn Bridge-City Hall' },
+  '7': { N: 'Flushing-Main St', S: '34 St-Hudson Yards' },
+  'A': { N: 'Inwood-207 St', S: 'Far Rockaway' },
+  'B': { N: 'Bedford Pk Blvd', S: 'Brighton Beach' },
+  'C': { N: '168 St', S: 'Euclid Av' },
+  'D': { N: 'Norwood-205 St', S: 'Coney Island' },
+  'E': { N: 'Jamaica Center', S: 'World Trade Center' },
+  'F': { N: 'Jamaica-179 St', S: 'Coney Island' },
+  'G': { N: 'Court Sq', S: 'Church Av' },
+  'J': { N: 'Jamaica Center', S: 'Broad St' },
+  'L': { N: '8 Av', S: 'Canarsie-Rockaway Pkwy' },
+  'M': { N: 'Forest Hills-71 Av', S: 'Middle Village-Metropolitan Av' },
+  'N': { N: 'Astoria-Ditmars Blvd', S: 'Coney Island' },
+  'Q': { N: '96 St-2 Av', S: 'Coney Island' },
+  'R': { N: 'Forest Hills-71 Av', S: 'Bay Ridge-95 St' },
+  'W': { N: 'Astoria-Ditmars Blvd', S: 'Whitehall St' },
+  'Z': { N: 'Jamaica Center', S: 'Broad St' },
+  'S': { N: 'Grand Central', S: 'Times Sq' }
+};
+
 const STATIONS = [
   { id: '120', name: '96 St (W 96th)', lines: ['1', '2', '3'] },
   { id: '127', name: 'Times Sq - 42 St', lines: ['1', '2', '3', '7', 'N', 'Q', 'R', 'W', 'S'] },
@@ -64,6 +91,11 @@ const App = () => {
 
   // Helper for colors with safety fallback
   const getLineColor = (line) => LINE_COLORS[line] || '#444';
+
+  // Helper for actual final destinations
+  const getTerminal = (line, dir) => {
+    return TERMINAL_MAP[line]?.[dir] || (dir === 'N' ? 'Uptown' : 'Downtown');
+  };
 
   // Sync line filters whenever the station changes
   useEffect(() => {
@@ -106,13 +138,16 @@ const App = () => {
       
       if (!response.ok) throw new Error("Worker Connection Failed");
       
-      const mockTrains = (dir) => Array.from({ length: 25 }, (_, i) => ({
-        id: `${dir}-${i}-${Math.random()}`,
-        line: selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)],
-        dest: dir === 'N' ? 'Uptown / Bronx' : 'Downtown / Brooklyn',
-        mins: (i * 2) + Math.floor(Math.random() * 5) + 1,
-        delayed: Math.random() > 0.85
-      })).sort((a, b) => a.mins - b.mins);
+      const mockTrains = (dir) => Array.from({ length: 25 }, (_, i) => {
+        const line = selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)];
+        return {
+          id: `${dir}-${i}-${Math.random()}`,
+          line: line,
+          dest: getTerminal(line, dir),
+          mins: (i * 2) + Math.floor(Math.random() * 5) + 1,
+          delayed: Math.random() > 0.85
+        };
+      }).sort((a, b) => a.mins - b.mins);
 
       setTrains({
         uptown: mockTrains('N'),
@@ -123,18 +158,20 @@ const App = () => {
 
     } catch (e) {
       console.error(e);
-      const firstLine = selectedStop?.lines?.[0] || '1';
-      const mockTrains = (dir) => Array.from({ length: 20 }, (_, i) => ({
-        id: `mock-${dir}-${i}`,
-        line: selectedStop.lines[Math.floor(Math.random() * (selectedStop.lines?.length || 1))],
-        dest: dir === 'N' ? 'Uptown / Local' : 'Downtown / Local',
-        mins: (i * 4) + 2,
-        delayed: false
-      }));
+      const mockTrains = (dir) => Array.from({ length: 20 }, (_, i) => {
+        const line = selectedStop.lines[Math.floor(Math.random() * (selectedStop.lines?.length || 1))];
+        return {
+          id: `mock-${dir}-${i}`,
+          line: line,
+          dest: getTerminal(line, dir),
+          mins: (i * 4) + 2,
+          delayed: false
+        };
+      });
       setTrains({ 
         uptown: mockTrains('N'), 
         downtown: mockTrains('S'), 
-        alerts: [{ id: 'e1', lines: [firstLine], header: 'Offline Mode', description: 'Connect Cloudflare Worker to see live connection status.' }] 
+        alerts: [{ id: 'e1', lines: [selectedStop?.lines?.[0] || '1'], header: 'Offline Mode', description: 'Connect Cloudflare Worker to see live connection status.' }] 
       });
     } finally {
       setLoading(false);
@@ -174,6 +211,16 @@ const App = () => {
     [trains.alerts, filterLines]
   );
 
+  const formatArrivalTime = (mins) => {
+    const arrivalDate = new Date(Date.now() + mins * 60000);
+    return arrivalDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/New_York'
+    });
+  };
+
   const styles = {
     wrapper: { padding: '20px', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
@@ -189,11 +236,12 @@ const App = () => {
     columnHeader: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic', borderBottom: '2px solid #222', paddingBottom: '12px', marginBottom: '20px' },
     card: (color) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', marginBottom: '14px', padding: '14px 18px', borderRadius: '0 10px 10px 0', borderLeft: `6px solid ${color}`, boxShadow: '0 4px 6px rgba(0,0,0,0.4)' }),
     bullet: (color, size = 40, active = true) => ({ width: `${size}px`, height: `${size}px`, borderRadius: '50%', backgroundColor: active ? color : '#222', opacity: active ? 1 : 0.3, border: active ? 'none' : '1px solid #444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: active ? '#fff' : '#444', fontSize: size === 40 ? '20px' : '14px', flexShrink: 0, cursor: 'pointer', transition: 'all 0.2s' }),
-    cardInfo: { display: 'flex', alignItems: 'center', gap: '15px' },
-    destination: { fontWeight: '700', fontSize: '16px' },
-    eta: { textAlign: 'right' },
-    etaValue: { fontSize: '28px', fontWeight: '900', lineHeight: 1 },
+    cardInfo: { display: 'flex', alignItems: 'center', gap: '15px', flex: 1, minWidth: 0 },
+    destination: { fontWeight: '700', fontSize: '16px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff' },
+    eta: { textAlign: 'right', flexShrink: 0, marginLeft: '10px' },
+    etaValue: { fontSize: '28px', fontWeight: '900', lineHeight: 1, color: '#fff' },
     etaUnit: { fontSize: '10px', color: '#666', fontWeight: 'bold', display: 'block' },
+    etaClock: { fontSize: '11px', color: '#999', fontWeight: 'bold', display: 'block', marginTop: '2px' },
     alertBox: { marginTop: '50px', borderTop: '1px solid #111', paddingTop: '30px' },
     alertItem: { backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid #222', padding: '20px', borderRadius: '14px', marginBottom: '15px' },
     footer: { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.95)', padding: '15px', borderTop: '1px solid #111', display: 'flex', justifyContent: 'space-around', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#555' }
@@ -251,7 +299,7 @@ const App = () => {
             <div key={t.id} style={styles.card(getLineColor(t.line))}>
               <div style={styles.cardInfo}>
                 <div style={styles.bullet(getLineColor(t.line))}>{t.line}</div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={styles.destination}>{t.dest}</div>
                   {t.delayed && <div style={{ color: '#f97316', fontSize: '11px', fontWeight: '800' }}>DELAYED</div>}
                 </div>
@@ -259,6 +307,7 @@ const App = () => {
               <div style={styles.eta}>
                 <span style={styles.etaValue}>{t.mins}</span>
                 <span style={styles.etaUnit}>MINS</span>
+                <span style={styles.etaClock}>{formatArrivalTime(t.mins)}</span>
               </div>
             </div>
           )) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px' }}>No trains matching selection</div>}
@@ -270,7 +319,7 @@ const App = () => {
             <div key={t.id} style={styles.card(getLineColor(t.line))}>
               <div style={styles.cardInfo}>
                 <div style={styles.bullet(getLineColor(t.line))}>{t.line}</div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={styles.destination}>{t.dest}</div>
                   {t.delayed && <div style={{ color: '#f97316', fontSize: '11px', fontWeight: '800' }}>DELAYED</div>}
                 </div>
@@ -278,6 +327,7 @@ const App = () => {
               <div style={styles.eta}>
                 <span style={styles.etaValue}>{t.mins}</span>
                 <span style={styles.etaUnit}>MINS</span>
+                <span style={styles.etaClock}>{formatArrivalTime(t.mins)}</span>
               </div>
             </div>
           )) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px' }}>No trains matching selection</div>}
