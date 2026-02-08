@@ -67,3 +67,39 @@ Alerts: Service notifications are automatically pinned to the bottom of the dash
 📄 License
 
 MIT
+
+ubwayPulse PWA: Cloudflare Setup Guide
+
+🚀 Step 2 Upgrade: Handling Alerts
+
+To make the Subway Alerts API work, your Cloudflare Worker needs to handle two different requests. Update your Worker code to check the URL:
+
+If the user asks for trains: Fetch from https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2F[LINE_FEED]
+
+If the user asks for alerts: Fetch from https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts
+
+Updated Worker Logic (Conceptual)
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const feedType = url.searchParams.get("type"); // e.g., 'trains' or 'alerts'
+    
+    let targetUrl = "[https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts](https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts)";
+    
+    if (feedType === "trains") {
+      const line = url.searchParams.get("line") || "gtfs";
+      targetUrl = `https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2F${line}`;
+    }
+
+    const response = await fetch(targetUrl, {
+      headers: { "x-api-key": env.MTA_API_KEY }
+    });
+    
+    // Return the binary data to the App for parsing
+    return new Response(response.body, {
+      headers: { "Access-Control-Allow-Origin": "*" }
+    });
+  }
+}
+
