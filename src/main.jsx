@@ -62,12 +62,14 @@ const App = () => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
+  // Sync line filters whenever the station changes
   useEffect(() => {
     if (selectedStop) {
       setFilterLines(selectedStop.lines || []);
     }
   }, [selectedStop]);
 
+  // Global CSS Injection for the black theme
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const style = document.createElement('style');
@@ -96,11 +98,12 @@ const App = () => {
       
       if (!response.ok) throw new Error("Worker Connection Failed");
       
-      const mockTrains = (dir) => Array.from({ length: 8 }, (_, i) => ({
+      // Increased mock pool size to 25 to ensure filters always return results
+      const mockTrains = (dir) => Array.from({ length: 25 }, (_, i) => ({
         id: `${dir}-${i}-${Math.random()}`,
         line: selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)],
         dest: dir === 'N' ? 'Uptown / Bronx' : 'Downtown / Brooklyn',
-        mins: (i * 3) + Math.floor(Math.random() * 5) + 1,
+        mins: (i * 2) + Math.floor(Math.random() * 5) + 1,
         delayed: Math.random() > 0.85
       })).sort((a, b) => a.mins - b.mins);
 
@@ -114,11 +117,12 @@ const App = () => {
     } catch (e) {
       console.error(e);
       const firstLine = selectedStop?.lines?.[0] || '1';
-      const mockTrains = (dir) => Array.from({ length: 5 }, (_, i) => ({
+      // Fallback mock data with healthy pool size
+      const mockTrains = (dir) => Array.from({ length: 20 }, (_, i) => ({
         id: `mock-${dir}-${i}`,
-        line: firstLine,
+        line: selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)],
         dest: dir === 'N' ? 'Uptown / Local' : 'Downtown / Local',
-        mins: (i * 5) + 2,
+        mins: (i * 4) + 2,
         delayed: false
       }));
       setTrains({ 
@@ -143,12 +147,20 @@ const App = () => {
     );
   };
 
+  // SOONEST ARRIVING LOGIC: Filter by active lines, sort, then take the top 5
   const filteredUptown = useMemo(() => 
-    trains.uptown.filter(t => filterLines.includes(t.line)).slice(0, 5), 
+    trains.uptown
+      .filter(t => filterLines.includes(t.line))
+      .sort((a, b) => a.mins - b.mins)
+      .slice(0, 5), 
     [trains.uptown, filterLines]
   );
+  
   const filteredDowntown = useMemo(() => 
-    trains.downtown.filter(t => filterLines.includes(t.line)).slice(0, 5), 
+    trains.downtown
+      .filter(t => filterLines.includes(t.line))
+      .sort((a, b) => a.mins - b.mins)
+      .slice(0, 5), 
     [trains.downtown, filterLines]
   );
   
@@ -303,15 +315,9 @@ const App = () => {
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  // Safe initialization pattern for preview environments
-  const render = () => {
-    const root = ReactDOM.createRoot(rootElement);
-    root.render(<App />);
-  };
-  
-  if (window.requestIdleCallback) {
-    window.requestIdleCallback(render);
-  } else {
-    setTimeout(render, 1);
+  // Use a singleton root pattern to prevent double-initialization errors
+  if (!window._mtaPulseRoot) {
+    window._mtaPulseRoot = ReactDOM.createRoot(rootElement);
   }
+  window._mtaPulseRoot.render(<App />);
 }
