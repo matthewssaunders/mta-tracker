@@ -62,6 +62,9 @@ const App = () => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
+  // Helper for colors with safety fallback
+  const getLineColor = (line) => LINE_COLORS[line] || '#444';
+
   // Sync line filters whenever the station changes
   useEffect(() => {
     if (selectedStop) {
@@ -72,16 +75,20 @@ const App = () => {
   // Global CSS Injection for the black theme
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      const style = document.createElement('style');
-      style.textContent = `
-        body, html, #root { background-color: #000 !important; margin: 0; padding: 0; color: #fff; font-family: -apple-system, system-ui, sans-serif; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
-      `;
-      document.head.appendChild(style);
+      const styleId = 'subway-pulse-global-styles';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          body, html, #root { background-color: #000 !important; margin: 0; padding: 0; color: #fff; font-family: -apple-system, system-ui, sans-serif; }
+          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          * { box-sizing: border-box; }
+          ::-webkit-scrollbar { width: 6px; }
+          ::-webkit-scrollbar-track { background: #000; }
+          ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+        `;
+        document.head.appendChild(style);
+      }
     }
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
@@ -94,11 +101,11 @@ const App = () => {
     
     try {
       const lineToFetch = (selectedStop.lines && selectedStop.lines.length > 0 && FEED_MAP[selectedStop.lines[0]]) || 'gtfs';
+      
       const response = await fetch(`${WORKER_URL}?type=trains&line=${lineToFetch}`);
       
       if (!response.ok) throw new Error("Worker Connection Failed");
       
-      // Increased mock pool size to 25 to ensure filters always return results
       const mockTrains = (dir) => Array.from({ length: 25 }, (_, i) => ({
         id: `${dir}-${i}-${Math.random()}`,
         line: selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)],
@@ -110,17 +117,16 @@ const App = () => {
       setTrains({
         uptown: mockTrains('N'),
         downtown: mockTrains('S'),
-        alerts: [{ id: 'A1', lines: [selectedStop.lines[0]], header: 'Live Feed Active', description: 'Worker successfully connected to MTA API.' }]
+        alerts: [{ id: 'A1', lines: [selectedStop.lines[0]], header: 'Live Feed Active', description: 'Worker successfully connected to MTA API. Displaying simulated real-time arrivals.' }]
       });
       setLastUpdated(new Date());
 
     } catch (e) {
       console.error(e);
       const firstLine = selectedStop?.lines?.[0] || '1';
-      // Fallback mock data with healthy pool size
       const mockTrains = (dir) => Array.from({ length: 20 }, (_, i) => ({
         id: `mock-${dir}-${i}`,
-        line: selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)],
+        line: selectedStop.lines[Math.floor(Math.random() * (selectedStop.lines?.length || 1))],
         dest: dir === 'N' ? 'Uptown / Local' : 'Downtown / Local',
         mins: (i * 4) + 2,
         delayed: false
@@ -128,7 +134,7 @@ const App = () => {
       setTrains({ 
         uptown: mockTrains('N'), 
         downtown: mockTrains('S'), 
-        alerts: [{ id: 'e1', lines: [firstLine], header: 'Offline Mode', description: 'Connect Cloudflare Worker to see live MTA data.' }] 
+        alerts: [{ id: 'e1', lines: [firstLine], header: 'Offline Mode', description: 'Connect Cloudflare Worker to see live connection status.' }] 
       });
     } finally {
       setLoading(false);
@@ -147,7 +153,6 @@ const App = () => {
     );
   };
 
-  // SOONEST ARRIVING LOGIC: Filter by active lines, sort, then take the top 5
   const filteredUptown = useMemo(() => 
     trains.uptown
       .filter(t => filterLines.includes(t.line))
@@ -168,8 +173,6 @@ const App = () => {
     trains.alerts.filter(a => a.lines && a.lines.some(l => filterLines.includes(l))),
     [trains.alerts, filterLines]
   );
-
-  const getLineColor = (line) => LINE_COLORS[line] || '#444';
 
   const styles = {
     wrapper: { padding: '20px', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh' },
@@ -313,11 +316,16 @@ const App = () => {
   );
 };
 
+// Safe mounting logic for preview environments to prevent "reading properties of undefined" errors
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  // Use a singleton root pattern to prevent double-initialization errors
-  if (!window._mtaPulseRoot) {
-    window._mtaPulseRoot = ReactDOM.createRoot(rootElement);
+  // Check if we are in a sandbox that might have already initialized the root
+  // We use a property on the element to track the root
+  if (!rootElement.__pulse_root) {
+    const root = ReactDOM.createRoot(rootElement);
+    rootElement.__pulse_root = root;
+    root.render(<App />);
+  } else {
+    rootElement.__pulse_root.render(<App />);
   }
-  window._mtaPulseRoot.render(<App />);
 }
