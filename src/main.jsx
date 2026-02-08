@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react'
-import ReactDOM from 'react-dom/client'
+import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom/client';
 import { 
-  Train, MapPin, Clock, AlertTriangle, 
+  Train, MapPin, AlertTriangle, 
   ArrowUpCircle, ArrowDownCircle, RefreshCw 
-} from 'lucide-react'
+} from 'lucide-react';
 
-// Official MTA Subway Colors
+/**
+ * MTA Official Subway Colors (HEX)
+ */
 const LINE_COLORS = {
   '1': '#EE352E', '2': '#EE352E', '3': '#EE352E',
   '4': '#00933C', '5': '#00933C', '6': '#00933C',
@@ -20,6 +22,7 @@ const LINE_COLORS = {
 };
 
 const STATIONS = [
+  { id: '120', name: '96 St', lines: ['1', '2', '3'] },
   { id: '127', name: 'Times Sq - 42 St', lines: ['1', '2', '3', '7', 'N', 'Q', 'R', 'W', 'S'] },
   { id: '635', name: 'Grand Central - 42 St', lines: ['4', '5', '6', '7', 'S'] },
   { id: 'A27', name: '59 St - Columbus Circle', lines: ['1', 'A', 'B', 'C', 'D'] },
@@ -32,14 +35,41 @@ const App = () => {
   const [trains, setTrains] = useState({ uptown: [], downtown: [], alerts: [] });
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+
+  // Global CSS Injection to ensure the black theme works without an external CSS file
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const style = document.createElement('style');
+      style.textContent = `
+        body, html, #root { 
+          background-color: #000 !important; 
+          margin: 0; 
+          padding: 0; 
+          color: #fff;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        @keyframes spin { 
+          from { transform: rotate(0deg); } 
+          to { transform: rotate(360deg); } 
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchRealtimeData = async () => {
     setLoading(true);
+    // Simulate API fetch delay
     await new Promise(r => setTimeout(r, 600));
     
     const lines = selectedStop.lines;
     const mockTrains = (dir) => Array.from({ length: 5 }, (_, i) => ({
-      id: `${dir}-${i}`,
+      id: `${dir}-${i}-${Math.random()}`,
       line: lines[Math.floor(Math.random() * lines.length)],
       dest: dir === 'N' ? 'Uptown / Bronx' : 'Downtown / Brooklyn',
       mins: (i * 4) + Math.floor(Math.random() * 5) + 2,
@@ -50,7 +80,7 @@ const App = () => {
       uptown: mockTrains('N'),
       downtown: mockTrains('S'),
       alerts: [
-        { id: 1, line: selectedStop.lines[0], msg: `Delays reported on ${selectedStop.lines[0]} line due to signal maintenance.` }
+        { id: 1, line: selectedStop.lines[0], msg: `Good Service reported on the ${selectedStop.lines.join('/')} lines.` }
       ]
     });
     setLastUpdated(new Date());
@@ -63,131 +93,123 @@ const App = () => {
     return () => clearInterval(timer);
   }, [selectedStop]);
 
-  const TrainRow = ({ train }) => (
-    <div className="flex items-center justify-between p-4 mb-3 bg-zinc-900/50 border-l-4 rounded-r-lg"
-         style={{ borderLeftColor: LINE_COLORS[train.line] || '#808183' }}>
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xl shadow-inner"
-             style={{ backgroundColor: LINE_COLORS[train.line] || '#808183' }}>
-          {train.line}
-        </div>
-        <div>
-          <div className="text-zinc-100 font-semibold">{train.dest}</div>
-          {train.delayed && <div className="text-[10px] text-orange-500 font-bold uppercase tracking-widest">Delayed</div>}
-        </div>
-      </div>
-      <div className="text-right">
-        <span className="text-2xl font-black text-white">{train.mins}</span>
-        <span className="text-[10px] text-zinc-500 ml-1 font-bold">MIN</span>
-      </div>
-    </div>
-  );
+  // Inline styling objects to bypass Tailwind/CSS build issues
+  const styles = {
+    wrapper: { padding: '20px', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh', boxSizing: 'border-box' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
+    logo: { display: 'flex', alignItems: 'center', gap: '12px' },
+    logoIcon: { backgroundColor: '#fff', color: '#000', padding: '6px', borderRadius: '6px' },
+    logoText: { fontSize: '24px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: '-1px' },
+    pickerSection: { marginBottom: '40px' },
+    label: { fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px', display: 'block' },
+    select: { width: '100%', backgroundColor: '#111', border: '1px solid #333', color: '#fff', padding: '16px', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', outline: 'none', appearance: 'none', cursor: 'pointer' },
+    boardGrid: { display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '30px' },
+    column: { flex: 1 },
+    columnHeader: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic', borderBottom: '2px solid #222', paddingBottom: '12px', marginBottom: '20px' },
+    card: (color) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', marginBottom: '14px', padding: '14px 18px', borderRadius: '0 10px 10px 0', borderLeft: `6px solid ${color}`, boxShadow: '0 4px 6px rgba(0,0,0,0.4)' }),
+    bullet: (color, size = 40) => ({ width: `${size}px`, height: `${size}px`, borderRadius: '50%', backgroundColor: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#fff', fontSize: size === 40 ? '20px' : '14px', flexShrink: 0 }),
+    cardInfo: { display: 'flex', alignItems: 'center', gap: '15px' },
+    destination: { fontWeight: '700', fontSize: '16px' },
+    eta: { textAlign: 'right' },
+    etaValue: { fontSize: '28px', fontWeight: '900', lineHeight: 1 },
+    etaUnit: { fontSize: '10px', color: '#666', fontWeight: 'bold', display: 'block' },
+    alertBox: { marginTop: '50px' },
+    alertItem: { backgroundColor: 'rgba(249, 115, 22, 0.08)', border: '1px solid rgba(249, 115, 22, 0.2)', padding: '18px', borderRadius: '14px', display: 'flex', gap: '15px', marginBottom: '15px' },
+    footer: { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.95)', padding: '15px', borderTop: '1px solid #111', display: 'flex', justifyContent: 'space-around', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#555' }
+  };
 
   return (
-    <div className="min-h-screen bg-black text-zinc-300 font-sans p-4 pb-20">
-      <div className="max-w-4xl mx-auto flex items-center justify-between mb-8 pt-4">
-        <div className="flex items-center gap-2">
-          <div className="bg-white p-1 rounded">
-            <Train className="text-black" size={24} />
-          </div>
-          <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase">SubwayPulse</h1>
+    <div style={styles.wrapper}>
+      <div style={styles.header}>
+        <div style={styles.logo}>
+          <div style={styles.logoIcon}><Train size={24} /></div>
+          <div style={styles.logoText}>SubwayPulse</div>
         </div>
-        <button onClick={fetchRealtimeData} className={`${loading ? 'animate-spin' : 'hover:text-white'} text-zinc-500 transition-colors`}>
-          <RefreshCw size={20} />
-        </button>
+        <RefreshCw 
+          size={22} 
+          style={{ cursor: 'pointer', color: '#888', animation: loading ? 'spin 1s linear infinite' : 'none' }} 
+          onClick={fetchRealtimeData}
+        />
       </div>
 
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Track Station</label>
-          <div className="relative">
-            <select 
-              className="w-full bg-zinc-900 border border-zinc-800 text-white p-4 rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none cursor-pointer"
-              value={selectedStop.id}
-              onChange={(e) => {
-                const stop = STATIONS.find(s => s.id === e.target.value);
-                if (stop) setSelectedStop(stop);
-              }}
-            >
-              {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
-              <MapPin size={18} />
-            </div>
-          </div>
-        </div>
+      <div style={styles.pickerSection}>
+        <span style={styles.label}>Station Monitor</span>
+        <select 
+          style={styles.select}
+          value={selectedStop.id}
+          onChange={(e) => setSelectedStop(STATIONS.find(s => s.id === e.target.value))}
+        >
+          {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </div>
 
-        <div className="flex flex-col md:flex-row gap-8 mb-12">
-          <div className="flex-1">
-            <h2 className="flex items-center gap-2 text-white font-black uppercase italic mb-4 border-b border-zinc-800 pb-2">
-              <ArrowUpCircle size={18} className="text-zinc-500" /> Uptown / Northbound
-            </h2>
-            {trains.uptown.length > 0 ? (
-              trains.uptown.map(t => <TrainRow key={t.id} train={t} />)
-            ) : (
-              <div className="p-8 text-center text-zinc-600 italic">No upcoming trains found</div>
-            )}
-          </div>
-
-          <div className="flex-1">
-            <h2 className="flex items-center gap-2 text-white font-black uppercase italic mb-4 border-b border-zinc-800 pb-2">
-              <ArrowDownCircle size={18} className="text-zinc-500" /> Downtown / Southbound
-            </h2>
-            {trains.downtown.length > 0 ? (
-              trains.downtown.map(t => <TrainRow key={t.id} train={t} />)
-            ) : (
-              <div className="p-8 text-center text-zinc-600 italic">No upcoming trains found</div>
-            )}
-          </div>
-        </div>
-
-        {trains.alerts.length > 0 && (
-          <div className="mt-8">
-            <h2 className="flex items-center gap-2 text-orange-500 font-black uppercase italic mb-4">
-              <AlertTriangle size={18} /> Service Alerts
-            </h2>
-            {trains.alerts.map(alert => (
-              <div key={alert.id} className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-xl flex gap-4 mb-4">
-                <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white text-sm"
-                     style={{ backgroundColor: LINE_COLORS[alert.line] }}>
-                  {alert.line}
+      <div style={styles.boardGrid}>
+        <div style={styles.column}>
+          <div style={styles.columnHeader}><ArrowUpCircle size={20}/> Uptown</div>
+          {trains.uptown.map(t => (
+            <div key={t.id} style={styles.card(LINE_COLORS[t.line])}>
+              <div style={styles.cardInfo}>
+                <div style={styles.bullet(LINE_COLORS[t.line])}>{t.line}</div>
+                <div>
+                  <div style={styles.destination}>{t.dest}</div>
+                  {t.delayed && <div style={{ color: '#f97316', fontSize: '11px', fontWeight: '800' }}>DELAYED</div>}
                 </div>
-                <p className="text-sm text-zinc-100 leading-relaxed">{alert.msg}</p>
               </div>
-            ))}
-          </div>
-        )}
+              <div style={styles.eta}>
+                <span style={styles.etaValue}>{t.mins}</span>
+                <span style={styles.etaUnit}>MINS</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={styles.column}>
+          <div style={styles.columnHeader}><ArrowDownCircle size={20}/> Downtown</div>
+          {trains.downtown.map(t => (
+            <div key={t.id} style={styles.card(LINE_COLORS[t.line])}>
+              <div style={styles.cardInfo}>
+                <div style={styles.bullet(LINE_COLORS[t.line])}>{t.line}</div>
+                <div>
+                  <div style={styles.destination}>{t.dest}</div>
+                  {t.delayed && <div style={{ color: '#f97316', fontSize: '11px', fontWeight: '800' }}>DELAYED</div>}
+                </div>
+              </div>
+              <div style={styles.eta}>
+                <span style={styles.etaValue}>{t.mins}</span>
+                <span style={styles.etaUnit}>MINS</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-lg border-t border-zinc-900 p-3">
-        <div className="max-w-4xl mx-auto flex justify-between items-center text-[10px] font-bold text-zinc-600 uppercase">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Live Feed: trains.matthewssaunders.com
-          </div>
-          <div>Updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}</div>
+      {trains.alerts.length > 0 && (
+        <div style={styles.alertBox}>
+          <span style={{ ...styles.label, color: '#f97316', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '15px', display: 'block' }}>
+            Service Alerts
+          </span>
+          {trains.alerts.map(a => (
+            <div key={a.id} style={styles.alertItem}>
+              <div style={styles.bullet(LINE_COLORS[a.line], 28)}>{a.line}</div>
+              <div style={{ fontSize: '14px', lineHeight: '1.5', color: '#ccc' }}>{a.msg}</div>
+            </div>
+          ))}
         </div>
-      </footer>
+      )}
+
+      <div style={styles.footer}>
+        <div style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '8px', height: '8px', backgroundColor: '#22c55e', borderRadius: '50%', boxShadow: '0 0 8px #22c55e' }} /> Live Feed
+        </div>
+        <div>Updated: {lastUpdated ? lastUpdated.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '--'}</div>
+      </div>
     </div>
   );
 };
 
-// Inline Tailwind setup for the environment
-if (typeof document !== 'undefined') {
-  const tailwindStyles = document.createElement('style');
-  tailwindStyles.textContent = `
-    @tailwind base;
-    @tailwind components;
-    @tailwind utilities;
-    body { margin: 0; background-color: #000; color: #fff; }
-  `;
-  document.head.appendChild(tailwindStyles);
-}
-
-// Fixed the root initialization to prevent "reading properties of undefined" errors 
-// caused by environment-specific React DOM version mismatches.
+// Mount the app
 const rootElement = document.getElementById('root');
-if (rootElement && !rootElement._reactRootContainer) {
+if (rootElement) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <React.StrictMode>
