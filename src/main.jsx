@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// REPLACE THIS with your actual Worker URL once it's deployed
 const WORKER_URL = "https://mta-worker.matthewssaunders.workers.dev";
 
 const LINE_COLORS = {
@@ -61,28 +60,27 @@ const TERMINAL_MAP = {
 };
 
 const STATIONS = [
-  { id: '120', name: '96 St (W 96th)', lines: ['1', '2', '3'] },
+  // Upper West Side 1/2/3
+  { id: '120', name: '96 St', lines: ['1', '2', '3'] },
+  { id: '125', name: '59 St-Columbus Circle', lines: ['1', '2', 'A', 'B', 'C', 'D'] },
+  { id: '124', name: '66 St-Lincoln Center', lines: ['1'] },
+  { id: '123', name: '72 St', lines: ['1', '2', '3'] },
+  { id: '122', name: '79 St', lines: ['1'] },
+  { id: '121', name: '86 St', lines: ['1'] },
+  { id: '119', name: '103 St', lines: ['1'] },
+  { id: '118', name: '110 St-Cathedral Pkwy', lines: ['1'] },
+  { id: '117', name: '116 St-Columbia Univ', lines: ['1'] },
+  { id: '116', name: '125 St', lines: ['1'] },
+  // Major Hubs
   { id: '127', name: 'Times Sq - 42 St', lines: ['1', '2', '3', '7', 'N', 'Q', 'R', 'W', 'S'] },
   { id: '635', name: 'Grand Central - 42 St', lines: ['4', '5', '6', '7', 'S'] },
-  { id: 'A27', name: '59 St - Columbus Circle', lines: ['1', 'A', 'B', 'C', 'D'] },
   { id: 'R16', name: '34 St - Herald Sq', lines: ['B', 'D', 'F', 'M', 'N', 'Q', 'R', 'W'] },
-  { id: 'L03', name: 'Union Sq - 14 St', lines: ['4', '5', '6', 'L', 'N', 'Q', 'R', 'W'] },
-  { id: '229', name: '34 St - Penn Station (1/2/3)', lines: ['1', '2', '3'] },
-  { id: 'A34', name: '34 St - Penn Station (A/C/E)', lines: ['A', 'C', 'E'] },
-  { id: 'A40', name: 'Fulton St', lines: ['2', '3', '4', '5', 'A', 'C', 'J', 'Z'] },
-  { id: 'R20', name: 'Canal St', lines: ['6', 'J', 'N', 'Q', 'R', 'W', 'Z'] },
-  { id: '235', name: 'Chambers St', lines: ['1', '2', '3'] },
-  { id: '631', name: '59 St', lines: ['4', '5', '6', 'N', 'R', 'W'] },
-  { id: 'D14', name: '47-50 Sts - Rockefeller Ctr', lines: ['B', 'D', 'F', 'M'] },
-  { id: 'F16', name: 'Delancey St - Essex St', lines: ['F', 'J', 'M', 'Z'] },
-  { id: 'G22', name: 'Court Sq', lines: ['7', 'E', 'G', 'M'] },
-  { id: 'H01', name: '8 Av - 14 St (L)', lines: ['L', 'A', 'C', 'E'] },
-  { id: '254', name: 'Atlantic Av-Barclays Ctr', lines: ['2', '3', '4', '5', 'B', 'D', 'N', 'Q', 'R'] },
-  { id: '724', name: 'Jackson Hts-Roosevelt Av', lines: ['7', 'E', 'F', 'M', 'R'] }
+  { id: 'L03', name: 'Union Sq - 14 St', lines: ['4', '5', '6', 'L', 'N', 'Q', 'R', 'W'] }
 ].sort((a, b) => a.id === '120' ? -1 : b.id === '120' ? 1 : a.name.localeCompare(b.name));
 
 const App = () => {
   const [selectedStop, setSelectedStop] = useState(STATIONS[0]);
+  const [direction, setDirection] = useState('S'); // Default to Downtown
   const [filterLines, setFilterLines] = useState(STATIONS[0]?.lines || []);
   const [trains, setTrains] = useState({ uptown: [], downtown: [], alerts: [] });
   const [loading, setLoading] = useState(false);
@@ -124,17 +122,12 @@ const App = () => {
     
     try {
       const lineToFetch = (selectedStop.lines && selectedStop.lines.length > 0 && FEED_MAP[selectedStop.lines[0]]) || 'gtfs';
-      
-      // Request 1: Train Feed
       const trainPromise = fetch(`${WORKER_URL}?type=trains&line=${lineToFetch}`);
-      // Request 2: Alerts Feed
       const alertsPromise = fetch(`${WORKER_URL}?type=alerts`);
 
       const [trainRes, alertsRes] = await Promise.all([trainPromise, alertsPromise]);
-      
       if (!trainRes.ok || !alertsRes.ok) throw new Error("Worker Connection Failed");
       
-      // Binary data received. Mocking the display logic for these terminals
       const mockTrains = (dir) => Array.from({ length: 25 }, (_, i) => {
         const line = selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)];
         return {
@@ -151,7 +144,7 @@ const App = () => {
         id: `alert-${line}`,
         lines: [line],
         header: 'Service Update',
-        description: `MTA confirms service is active on the ${line} line at ${selectedStop.name}. No major delays reported.`
+        description: `MTA confirms service is active on the ${line} line.`
       }));
 
       setTrains({
@@ -176,7 +169,7 @@ const App = () => {
       setTrains({ 
         uptown: mockTrains('N'), 
         downtown: mockTrains('S'), 
-        alerts: [{ id: 'e1', lines: [selectedStop?.lines?.[0] || '1'], header: 'Offline Mode', description: 'Connect Cloudflare Worker to see live connection status.' }] 
+        alerts: [{ id: 'e1', lines: [selectedStop?.lines?.[0] || '1'], header: 'Offline Mode', description: 'Worker connection pending...' }] 
       });
     } finally {
       setLoading(false);
@@ -193,15 +186,10 @@ const App = () => {
     setFilterLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line]);
   };
 
-  const filteredUptown = useMemo(() => 
-    trains.uptown.filter(t => filterLines.includes(t.line)).sort((a, b) => a.mins - b.mins).slice(0, 5), 
-    [trains.uptown, filterLines]
-  );
-  
-  const filteredDowntown = useMemo(() => 
-    trains.downtown.filter(t => filterLines.includes(t.line)).sort((a, b) => a.mins - b.mins).slice(0, 5), 
-    [trains.downtown, filterLines]
-  );
+  const activeTrains = useMemo(() => {
+    const pool = direction === 'N' ? trains.uptown : trains.downtown;
+    return pool.filter(t => filterLines.includes(t.line)).sort((a, b) => a.mins - b.mins).slice(0, 5);
+  }, [trains, filterLines, direction]);
   
   const filteredAlerts = useMemo(() => 
     trains.alerts.filter(a => a.lines && a.lines.some(l => filterLines.includes(l))),
@@ -216,132 +204,101 @@ const App = () => {
   };
 
   const styles = {
-    wrapper: { padding: '20px', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
-    logo: { display: 'flex', alignItems: 'center', gap: '12px' },
-    logoIcon: { backgroundColor: '#fff', color: '#000', padding: '6px', borderRadius: '6px' },
-    logoText: { fontSize: '24px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: '-1px' },
-    pickerSection: { marginBottom: '25px' },
-    label: { fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px', display: 'block' },
-    select: { width: '100%', backgroundColor: '#111', border: '1px solid #333', color: '#fff', padding: '16px', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', outline: 'none', appearance: 'none', cursor: 'pointer' },
-    filterSection: { marginBottom: '35px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' },
-    boardGrid: { display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '30px' },
-    column: { flex: 1 },
-    columnHeader: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic', borderBottom: '2px solid #222', paddingBottom: '12px', marginBottom: '20px' },
-    card: (color) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', marginBottom: '14px', padding: '14px 18px', borderRadius: '0 10px 10px 0', borderLeft: `6px solid ${color}`, boxShadow: '0 4px 6px rgba(0,0,0,0.4)' }),
-    bullet: (color, size = 40, active = true) => ({ width: `${size}px`, height: `${size}px`, borderRadius: '50%', backgroundColor: active ? color : '#222', opacity: active ? 1 : 0.3, border: active ? 'none' : '1px solid #444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: active ? '#fff' : '#444', fontSize: size === 40 ? '20px' : '14px', flexShrink: 0, cursor: 'pointer', transition: 'all 0.2s' }),
-    cardInfo: { display: 'flex', alignItems: 'center', gap: '15px', flex: 1, minWidth: 0 },
-    destination: { fontWeight: '700', fontSize: '16px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff' },
+    wrapper: { padding: '15px', maxWidth: '800px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh' },
+    topNav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
+    pickerSection: { flex: 1, marginRight: '15px' },
+    select: { width: '180px', maxWidth: '100%', backgroundColor: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', outline: 'none' },
+    directionToggle: { display: 'flex', backgroundColor: '#111', borderRadius: '8px', padding: '4px' },
+    toggleBtn: (active) => ({ flex: 1, padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', backgroundColor: active ? '#fff' : 'transparent', color: active ? '#000' : '#666', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }),
+    filterSection: { marginBottom: '20px', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' },
+    card: (color) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', marginBottom: '10px', padding: '12px 16px', borderRadius: '0 10px 10px 0', borderLeft: `6px solid ${color}`, position: 'relative' }),
+    bullet: (color, size = 32, active = true) => ({ width: `${size}px`, height: `${size}px`, borderRadius: '50%', backgroundColor: active ? color : '#222', opacity: active ? 1 : 0.3, border: active ? 'none' : '1px solid #444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: active ? '#fff' : '#444', fontSize: size === 32 ? '16px' : '12px', flexShrink: 0, cursor: 'pointer' }),
+    cardInfo: { display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 },
+    destination: { fontWeight: '700', fontSize: '15px', color: '#fff' },
     eta: { textAlign: 'right', flexShrink: 0, marginLeft: '10px' },
-    etaValue: { fontSize: '28px', fontWeight: '900', lineHeight: 1, color: '#fff' },
-    etaUnit: { fontSize: '10px', color: '#666', fontWeight: 'bold', display: 'block' },
-    etaClock: { fontSize: '11px', color: '#999', fontWeight: 'bold', display: 'block', marginTop: '2px' },
-    alertBox: { marginTop: '50px', borderTop: '1px solid #111', paddingTop: '30px' },
-    alertItem: { backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid #222', padding: '20px', borderRadius: '14px', marginBottom: '15px' },
-    footer: { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.95)', padding: '15px', borderTop: '1px solid #111', display: 'flex', justifyContent: 'space-around', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#555' }
+    etaValue: { fontSize: '24px', fontWeight: '900', lineHeight: 1, color: '#fff' },
+    etaUnit: { fontSize: '9px', color: '#666', fontWeight: 'bold', display: 'block' },
+    arrivingSoon: { fontSize: '9px', color: '#22c55e', fontWeight: '900', textTransform: 'uppercase', display: 'block', marginTop: '2px' },
+    alertIcon: { color: '#f97316', marginLeft: '6px' },
+    footer: { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.95)', padding: '12px', borderTop: '1px solid #111', display: 'flex', justifyContent: 'space-around', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#444' }
   };
 
   return (
     <div style={styles.wrapper}>
-      <div style={styles.header}>
-        <div style={styles.logo}>
-          <div style={styles.logoIcon}><Train size={24} /></div>
-          <div style={styles.logoText}>SubwayPulse</div>
+      <div style={styles.topNav}>
+        <div style={styles.pickerSection}>
+          <select style={styles.select} value={selectedStop?.id || ''} onChange={(e) => {
+            const stop = STATIONS.find(s => s.id === e.target.value);
+            if (stop) setSelectedStop(stop);
+          }}>
+            {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
         </div>
-        <button onClick={fetchRealtimeData} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>
-          <RefreshCw size={22} className={loading ? 'spin' : ''} />
+        <div style={styles.directionToggle}>
+          <button style={styles.toggleBtn(direction === 'N')} onClick={() => setDirection('N')}>
+            <ArrowUpCircle size={14} /> Upt
+          </button>
+          <button style={styles.toggleBtn(direction === 'S')} onClick={() => setDirection('S')}>
+            <ArrowDownCircle size={14} /> Dwn
+          </button>
+        </div>
+        <button onClick={fetchRealtimeData} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', marginLeft: '10px' }}>
+          <RefreshCw size={18} className={loading ? 'spin' : ''} />
         </button>
       </div>
 
-      <div style={styles.pickerSection}>
-        <span style={styles.label}>Station Hub</span>
-        <select style={styles.select} value={selectedStop?.id || ''} onChange={(e) => {
-          const stop = STATIONS.find(s => s.id === e.target.value);
-          if (stop) setSelectedStop(stop);
-        }}>
-          {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+      <div style={styles.filterSection}>
+        {selectedStop.lines.map(line => (
+          <div key={line} style={styles.bullet(getLineColor(line), 28, filterLines.includes(line))} onClick={() => toggleLine(line)}>
+            {line}
+          </div>
+        ))}
       </div>
 
-      {selectedStop && (
-        <div style={styles.filterSection}>
-          <Filter size={14} style={{ color: '#444' }} />
-          <span style={{ fontSize: '10px', color: '#444', fontWeight: 'bold', textTransform: 'uppercase', marginRight: '5px' }}>Line Filters:</span>
-          {selectedStop.lines.map(line => (
-            <div key={line} style={styles.bullet(getLineColor(line), 32, filterLines.includes(line))} onClick={() => toggleLine(line)}>
-              {line}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div style={styles.boardGrid}>
-        <div style={styles.column}>
-          <div style={styles.columnHeader}><ArrowUpCircle size={20}/> Uptown</div>
-          {filteredUptown.length > 0 ? filteredUptown.map(t => (
+      <div>
+        {activeTrains.length > 0 ? activeTrains.map(t => {
+          const hasAlert = trains.alerts.some(a => a.lines.includes(t.line));
+          return (
             <div key={t.id} style={styles.card(getLineColor(t.line))}>
               <div style={styles.cardInfo}>
                 <div style={styles.bullet(getLineColor(t.line))}>{t.line}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={styles.destination}>{t.dest}</div>
-                  {t.delayed && <div style={{ color: '#f97316', fontSize: '11px', fontWeight: '800' }}>DELAYED</div>}
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={styles.destination}>{t.dest}</span>
+                    {hasAlert && <AlertTriangle size={14} style={styles.alertIcon} />}
+                  </div>
+                  {t.delayed && <div style={{ color: '#f97316', fontSize: '10px', fontWeight: '800' }}>DELAYED</div>}
                 </div>
               </div>
               <div style={styles.eta}>
                 <span style={styles.etaValue}>{t.mins}</span>
                 <span style={styles.etaUnit}>MINS</span>
-                <span style={styles.etaClock}>{formatArrivalTime(t.mins)}</span>
+                {t.mins < 4 && <span style={styles.arrivingSoon}>Arriving Soon</span>}
               </div>
             </div>
-          )) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px' }}>No trains matching selection</div>}
-        </div>
-
-        <div style={styles.column}>
-          <div style={styles.columnHeader}><ArrowDownCircle size={20}/> Downtown</div>
-          {filteredDowntown.length > 0 ? filteredDowntown.map(t => (
-            <div key={t.id} style={styles.card(getLineColor(t.line))}>
-              <div style={styles.cardInfo}>
-                <div style={styles.bullet(getLineColor(t.line))}>{t.line}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={styles.destination}>{t.dest}</div>
-                  {t.delayed && <div style={{ color: '#f97316', fontSize: '11px', fontWeight: '800' }}>DELAYED</div>}
-                </div>
-              </div>
-              <div style={styles.eta}>
-                <span style={styles.etaValue}>{t.mins}</span>
-                <span style={styles.etaUnit}>MINS</span>
-                <span style={styles.etaClock}>{formatArrivalTime(t.mins)}</span>
-              </div>
-            </div>
-          )) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px' }}>No trains matching selection</div>}
-        </div>
+          );
+        }) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px', textAlign: 'center' }}>No upcoming trains</div>}
       </div>
 
       {filteredAlerts.length > 0 && (
-        <div style={styles.alertBox}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-            <AlertTriangle size={18} style={{ color: '#f97316' }} />
-            <span style={{ fontSize: '12px', color: '#f97316', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>Service Notifications</span>
+        <div style={{ marginTop: '30px', borderTop: '1px solid #111', paddingTop: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+            <AlertTriangle size={14} style={{ color: '#f97316' }} />
+            <span style={{ fontSize: '10px', color: '#f97316', fontWeight: '900', textTransform: 'uppercase' }}>Alerts</span>
           </div>
           {filteredAlerts.map(a => (
-            <div key={a.id} style={styles.alertItem}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                {a.lines && a.lines.map(l => (
-                  <div key={l} style={styles.bullet(getLineColor(l), 24)}>{l}</div>
-                ))}
-                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{a.header}</span>
-              </div>
-              <div style={{ fontSize: '13px', lineHeight: '1.6', color: '#888' }}>{a.description}</div>
+            <div key={a.id} style={{ fontSize: '12px', color: '#666', marginBottom: '8px', padding: '10px', backgroundColor: '#111', borderRadius: '8px' }}>
+              <strong>{a.lines.join('/')}:</strong> {a.description}
             </div>
           ))}
         </div>
       )}
 
       <div style={styles.footer}>
-        <div style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '8px', height: '8px', backgroundColor: '#22c55e', borderRadius: '50%', boxShadow: '0 0 8px #22c55e' }} /> System Feed Active
+        <div style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ width: '6px', height: '6px', backgroundColor: '#22c55e', borderRadius: '50%' }} /> Active Feed
         </div>
-        <div>Updated: {lastUpdated ? lastUpdated.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '--'}</div>
+        <div>Updated: {lastUpdated ? lastUpdated.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--'}</div>
       </div>
     </div>
   );
