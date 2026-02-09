@@ -134,10 +134,11 @@ const App = () => {
           id: `${dir}-${i}-${Math.random()}`,
           line: line,
           dest: getTerminal(line, dir),
+          // Store raw mins, but we will round up during display/sorting logic
           mins: (i * 1.5) + Math.floor(Math.random() * 5) + 1,
           delayed: Math.random() > 0.90
         };
-      }).sort((a, b) => a.mins - b.mins);
+      }).sort((a, b) => Math.ceil(a.mins) - Math.ceil(b.mins));
 
       // Interpret alerts
       const realAlerts = selectedStop.lines.map(line => ({
@@ -186,9 +187,15 @@ const App = () => {
     setFilterLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line]);
   };
 
+  const selectAll = () => setFilterLines(selectedStop.lines);
+  const clearAll = () => setFilterLines([]);
+
   const activeTrains = useMemo(() => {
     const pool = direction === 'N' ? trains.uptown : trains.downtown;
-    return pool.filter(t => filterLines.includes(t.line)).sort((a, b) => a.mins - b.mins).slice(0, 10);
+    return pool
+      .filter(t => filterLines.includes(t.line))
+      .sort((a, b) => Math.ceil(a.mins) - Math.ceil(b.mins))
+      .slice(0, 10);
   }, [trains, filterLines, direction]);
   
   const filteredAlerts = useMemo(() => 
@@ -201,7 +208,9 @@ const App = () => {
   );
 
   const formatArrivalTime = (mins) => {
-    const arrivalDate = new Date(Date.now() + mins * 60000);
+    // Rounding up the minutes for the clock time to match the display
+    const roundedMins = Math.ceil(mins);
+    const arrivalDate = new Date(Date.now() + roundedMins * 60000);
     return arrivalDate.toLocaleTimeString('en-US', {
       hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York'
     });
@@ -215,6 +224,8 @@ const App = () => {
     directionToggle: { display: 'flex', backgroundColor: '#111', borderRadius: '8px', padding: '4px', flex: '1' },
     toggleBtn: (active) => ({ flex: 1, padding: '10px 0', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', backgroundColor: active ? '#fff' : 'transparent', color: active ? '#000' : '#666', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', whiteSpace: 'nowrap' }),
     filterSection: { marginBottom: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' },
+    filterActions: { display: 'flex', gap: '12px', marginLeft: '8px', borderLeft: '1px solid #222', paddingLeft: '12px' },
+    actionBtn: { background: 'none', border: 'none', color: '#666', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', padding: '4px 0' },
     boardGrid: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '30px' },
     card: (color) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', padding: '12px 16px', borderRadius: '0 10px 10px 0', borderLeft: `6px solid ${color}`, height: '85px', position: 'relative' }),
     rank: { position: 'absolute', top: '-6px', left: '-12px', width: '20px', height: '20px', backgroundColor: '#333', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', border: '2px solid #000', zIndex: 10 },
@@ -262,6 +273,10 @@ const App = () => {
             {line}
           </div>
         ))}
+        <div style={styles.filterActions}>
+          <button style={styles.actionBtn} onClick={selectAll}>All</button>
+          <button style={styles.actionBtn} onClick={clearAll}>Clear</button>
+        </div>
       </div>
 
       <div style={styles.boardGrid}>
@@ -270,6 +285,7 @@ const App = () => {
             a.lines.includes(t.line) && 
             !a.description.includes("MTA confirms service is active")
           );
+          const roundedMins = Math.ceil(t.mins);
           return (
             <div key={t.id} style={styles.card(getLineColor(t.line))}>
               <div style={styles.rank}>{index + 1}</div>
@@ -280,7 +296,7 @@ const App = () => {
                     <span style={styles.destination}>{t.dest}</span>
                     {hasIssue && <AlertTriangle size={14} style={styles.alertIcon} />}
                   </div>
-                  {t.mins < 4 ? (
+                  {roundedMins < 4 ? (
                     <div style={{...styles.statusLabel, ...styles.arrivingSoon}}>Arriving Soon</div>
                   ) : t.delayed ? (
                     <div style={{...styles.statusLabel, ...styles.delayed}}>Delayed</div>
@@ -288,7 +304,7 @@ const App = () => {
                 </div>
               </div>
               <div style={styles.eta}>
-                <span style={styles.etaValue}>{t.mins}</span>
+                <span style={styles.etaValue}>{roundedMins}</span>
                 <span style={styles.etaUnit}>MINS</span>
                 <span style={styles.etaClock}>{formatArrivalTime(t.mins)}</span>
               </div>
