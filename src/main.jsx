@@ -128,18 +128,18 @@ const App = () => {
       const [trainRes, alertsRes] = await Promise.all([trainPromise, alertsPromise]);
       if (!trainRes.ok || !alertsRes.ok) throw new Error("Worker Connection Failed");
       
-      const mockTrains = (dir) => Array.from({ length: 30 }, (_, i) => {
+      const mockTrains = (dir) => Array.from({ length: 35 }, (_, i) => {
         const line = selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)];
         return {
           id: `${dir}-${i}-${Math.random()}`,
           line: line,
           dest: getTerminal(line, dir),
-          mins: (i * 2) + Math.floor(Math.random() * 5) + 1,
-          delayed: Math.random() > 0.85
+          mins: (i * 1.5) + Math.floor(Math.random() * 5) + 1,
+          delayed: Math.random() > 0.90
         };
       }).sort((a, b) => a.mins - b.mins);
 
-      // Interpreting alerts
+      // Interpret alerts
       const realAlerts = selectedStop.lines.map(line => ({
         id: `alert-${line}`,
         lines: [line],
@@ -208,22 +208,26 @@ const App = () => {
   };
 
   const styles = {
-    wrapper: { padding: '15px', maxWidth: '800px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh' },
-    topNav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-    pickerSection: { flex: 1, marginRight: '15px' },
-    select: { width: '360px', maxWidth: '100%', backgroundColor: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', outline: 'none' },
-    directionToggle: { display: 'flex', backgroundColor: '#111', borderRadius: '8px', padding: '4px' },
-    toggleBtn: (active) => ({ flex: 1, padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', backgroundColor: active ? '#fff' : 'transparent', color: active ? '#000' : '#666', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }),
-    filterSection: { marginBottom: '20px', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' },
-    card: (color) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', marginBottom: '10px', padding: '12px 16px', borderRadius: '0 10px 10px 0', borderLeft: `6px solid ${color}`, position: 'relative' }),
+    wrapper: { padding: '15px', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh' },
+    topNav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px' },
+    pickerSection: { flex: '0 1 360px' },
+    select: { width: '100%', backgroundColor: '#111', border: '1px solid #333', color: '#fff', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', outline: 'none' },
+    directionToggle: { display: 'flex', backgroundColor: '#111', borderRadius: '8px', padding: '4px', flex: '1' },
+    toggleBtn: (active) => ({ flex: 1, padding: '10px 0', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', backgroundColor: active ? '#fff' : 'transparent', color: active ? '#000' : '#666', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', whiteSpace: 'nowrap' }),
+    filterSection: { marginBottom: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' },
+    boardGrid: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '30px' },
+    card: (color) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', padding: '12px 16px', borderRadius: '0 10px 10px 0', borderLeft: `6px solid ${color}`, height: '85px', position: 'relative' }),
+    rank: { position: 'absolute', top: '-6px', left: '-12px', width: '20px', height: '20px', backgroundColor: '#333', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', border: '2px solid #000', zIndex: 10 },
     bullet: (color, size = 32, active = true) => ({ width: `${size}px`, height: `${size}px`, borderRadius: '50%', backgroundColor: active ? color : '#222', opacity: active ? 1 : 0.3, border: active ? 'none' : '1px solid #444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: active ? '#fff' : '#444', fontSize: size === 32 ? '16px' : '12px', flexShrink: 0, cursor: 'pointer' }),
     cardInfo: { display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 },
-    destination: { fontWeight: '700', fontSize: '15px', color: '#fff' },
+    destination: { fontWeight: '700', fontSize: '14px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     eta: { textAlign: 'right', flexShrink: 0, marginLeft: '10px' },
-    etaValue: { fontSize: '24px', fontWeight: '900', lineHeight: 1, color: '#fff' },
-    etaUnit: { fontSize: '9px', color: '#666', fontWeight: 'bold', display: 'block' },
+    etaValue: { fontSize: '22px', fontWeight: '900', lineHeight: 1, color: '#fff' },
+    etaUnit: { fontSize: '8px', color: '#666', fontWeight: 'bold', display: 'block' },
     etaClock: { fontSize: '10px', color: '#999', fontWeight: 'bold', display: 'block', marginTop: '2px' },
-    arrivingSoon: { fontSize: '9px', color: '#22c55e', fontWeight: '900', textTransform: 'uppercase', display: 'block', marginTop: '2px' },
+    statusLabel: { fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginTop: '2px' },
+    arrivingSoon: { color: '#22c55e' },
+    delayed: { color: '#f97316' },
     alertIcon: { color: '#f97316', marginLeft: '6px' },
     footer: { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.95)', padding: '12px', borderTop: '1px solid #111', display: 'flex', justifyContent: 'space-around', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#444' }
   };
@@ -247,8 +251,8 @@ const App = () => {
             <ArrowDownCircle size={14} /> Downtown
           </button>
         </div>
-        <button onClick={fetchRealtimeData} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', marginLeft: '10px' }}>
-          <RefreshCw size={18} className={loading ? 'spin' : ''} />
+        <button onClick={fetchRealtimeData} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer' }}>
+          <RefreshCw size={20} className={loading ? 'spin' : ''} />
         </button>
       </div>
 
@@ -260,15 +264,15 @@ const App = () => {
         ))}
       </div>
 
-      <div>
-        {activeTrains.length > 0 ? activeTrains.map(t => {
-          // Only show alert icon if the alert description is NOT a "service active" message
+      <div style={styles.boardGrid}>
+        {activeTrains.length > 0 ? activeTrains.map((t, index) => {
           const hasIssue = trains.alerts.some(a => 
             a.lines.includes(t.line) && 
             !a.description.includes("MTA confirms service is active")
           );
           return (
             <div key={t.id} style={styles.card(getLineColor(t.line))}>
+              <div style={styles.rank}>{index + 1}</div>
               <div style={styles.cardInfo}>
                 <div style={styles.bullet(getLineColor(t.line))}>{t.line}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -276,28 +280,31 @@ const App = () => {
                     <span style={styles.destination}>{t.dest}</span>
                     {hasIssue && <AlertTriangle size={14} style={styles.alertIcon} />}
                   </div>
-                  {t.delayed && <div style={{ color: '#f97316', fontSize: '10px', fontWeight: '800' }}>DELAYED</div>}
+                  {t.mins < 4 ? (
+                    <div style={{...styles.statusLabel, ...styles.arrivingSoon}}>Arriving Soon</div>
+                  ) : t.delayed ? (
+                    <div style={{...styles.statusLabel, ...styles.delayed}}>Delayed</div>
+                  ) : null}
                 </div>
               </div>
               <div style={styles.eta}>
                 <span style={styles.etaValue}>{t.mins}</span>
                 <span style={styles.etaUnit}>MINS</span>
                 <span style={styles.etaClock}>{formatArrivalTime(t.mins)}</span>
-                {t.mins < 4 && <span style={styles.arrivingSoon}>Arriving Soon</span>}
               </div>
             </div>
           );
-        }) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px', textAlign: 'center' }}>No upcoming trains</div>}
+        }) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px', textAlign: 'center', gridColumn: 'span 2' }}>No upcoming trains</div>}
       </div>
 
       {filteredAlerts.length > 0 && (
-        <div style={{ marginTop: '30px', borderTop: '1px solid #111', paddingTop: '20px' }}>
+        <div style={{ marginTop: '10px', borderTop: '1px solid #111', paddingTop: '20px', paddingBottom: '60px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
             <AlertTriangle size={14} style={{ color: '#f97316' }} />
-            <span style={{ fontSize: '10px', color: '#f97316', fontWeight: '900', textTransform: 'uppercase' }}>Alerts</span>
+            <span style={{ fontSize: '10px', color: '#f97316', fontWeight: '900', textTransform: 'uppercase' }}>Service Notifications</span>
           </div>
           {filteredAlerts.map(a => (
-            <div key={a.id} style={{ fontSize: '12px', color: '#666', marginBottom: '8px', padding: '10px', backgroundColor: '#111', borderRadius: '8px' }}>
+            <div key={a.id} style={{ fontSize: '12px', color: '#888', marginBottom: '8px', padding: '12px', backgroundColor: '#111', borderRadius: '8px', borderLeft: `4px solid ${getLineColor(a.lines[0])}` }}>
               <strong>{a.lines.join('/')}:</strong> {a.description}
             </div>
           ))}
