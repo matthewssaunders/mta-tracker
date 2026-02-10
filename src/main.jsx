@@ -88,12 +88,21 @@ const App = () => {
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   const getLineColor = (line) => LINE_COLORS[line] || '#444';
-  const getTerminal = (line, dir) => TERMINAL_MAP[line]?.[dir] || (dir === 'N' ? 'Uptown' : 'Downtown');
+  
+  const getTerminal = (line, dir) => {
+    if (!line || !dir) return 'Terminal';
+    const entry = TERMINAL_MAP[line];
+    return entry ? (entry[dir] || (dir === 'N' ? 'Uptown' : 'Downtown')) : (dir === 'N' ? 'Uptown' : 'Downtown');
+  };
 
+  // When the station changes, reset the filter to "All"
   useEffect(() => {
-    if (selectedStop) setFilterLines(selectedStop.lines || []);
+    if (selectedStop) {
+      setFilterLines(selectedStop.lines || []);
+    }
   }, [selectedStop]);
 
+  // Handle CSS Injection and Window Resize
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const styleId = 'subway-pulse-global-styles';
@@ -116,12 +125,12 @@ const App = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const fetchRealtimeData = async (manual = false) => {
+  const fetchRealtimeData = async (showLoadingOverlay = false) => {
     if (!selectedStop || loading) return;
     setLoading(true);
     
-    // If manual refresh, clear results immediately to avoid the "jump"
-    if (manual) {
+    // Clear results immediately if we want a hard reset feel
+    if (showLoadingOverlay) {
       setTrains({ uptown: [], downtown: [], alerts: [] });
     }
     
@@ -135,11 +144,11 @@ const App = () => {
       
       const mockTrains = (dir) => {
         const result = [];
-        const usedTimes = new Set(); // Prevent duplicates at the same minute for the same line
-        
-        for (let i = 0; i < 40; i++) {
+        const usedTimes = new Set();
+        // Pool large enough to support 10 trains even with specific filtering
+        for (let i = 0; i < 50; i++) {
           const line = selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)];
-          const mins = (i * 1) + Math.floor(Math.random() * 3) + 1;
+          const mins = (i * 0.9) + Math.floor(Math.random() * 4) + 1;
           const key = `${line}-${Math.ceil(mins)}`;
           
           if (!usedTimes.has(key)) {
@@ -175,7 +184,7 @@ const App = () => {
       const mockTrains = (dir) => {
         const result = [];
         const usedTimes = new Set();
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 40; i++) {
           const line = selectedStop.lines[Math.floor(Math.random() * (selectedStop.lines?.length || 1))];
           const mins = (i * 2) + Math.floor(Math.random() * 4) + 1;
           const key = `${line}-${Math.ceil(mins)}`;
@@ -202,11 +211,17 @@ const App = () => {
     }
   };
 
+  // Effect: Fetch data whenever the station OR line selection changes
+  // Also maintains the 30-second automatic refresh interval
   useEffect(() => {
-    fetchRealtimeData();
-    const timer = setInterval(() => fetchRealtimeData(), 30000);
+    fetchRealtimeData(true); // Initial/Filter fetch
+
+    const timer = setInterval(() => {
+      fetchRealtimeData(false); // Background auto-refresh (silent)
+    }, 30000);
+
     return () => clearInterval(timer);
-  }, [selectedStop]);
+  }, [selectedStop, filterLines]);
 
   const toggleLine = (line) => {
     setFilterLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line]);
