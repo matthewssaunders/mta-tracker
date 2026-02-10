@@ -8,7 +8,6 @@ import {
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 
 // --- CONFIGURATION ---
-// IMPORTANT: Ensure this matches your Cloudflare Worker URL exactly
 const WORKER_URL = "https://mta-worker.matthewssaunders.workers.dev";
 const WALK_BUFFER = 7; 
 
@@ -81,7 +80,6 @@ const STATIONS = [
 
 const getLineColor = (line) => LINE_COLORS[line] || '#444';
 
-// Safety Guarded Terminal Lookup
 const getTerminal = (line, dir) => {
   if (!line || !dir) return 'Terminal';
   const entry = TERMINAL_MAP[line];
@@ -98,14 +96,6 @@ const formatArrivalTime = (mins) => {
 };
 
 const TrainCard = ({ t, index, isDashMode, alerts }) => {
-  const hasIssue = (alerts || []).some(a => a.lines?.includes(t.line) && !a.description.includes("MTA confirms service is active"));
-  const isExpress = EXPRESS_LINES.includes(t.line);
-  const roundedMins = Math.ceil(t.mins);
-  
-  const dashTime = roundedMins - WALK_BUFFER;
-  const isTooLate = dashTime < 0;
-
-  const TrainCard = ({ t, index, isDashMode, alerts }) => {
   const hasIssue = (alerts || []).some(a => a.lines?.includes(t.line) && !a.description.includes("MTA confirms service is active"));
   const isExpress = EXPRESS_LINES.includes(t.line);
   const roundedMins = Math.ceil(t.mins);
@@ -163,3 +153,81 @@ const TrainCard = ({ t, index, isDashMode, alerts }) => {
     </div>
   );
 };
+
+const App = () => {
+  const [selectedStop, setSelectedStop] = useState(STATIONS[0]);
+  const [direction, setDirection] = useState('S'); 
+  const [filterLines, setFilterLines] = useState(STATIONS[0]?.lines || []);
+  const [trains, setTrains] = useState({ uptown: [], downtown: [], alerts: [] });
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [isDashMode, setIsDashMode] = useState(false);
+
+  useEffect(() => {
+    if (selectedStop) setFilterLines(selectedStop.lines || []);
+  }, [selectedStop]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const fetchRealtimeData = async (manual = false) => {
+    if (!selectedStop || (loading && !manual)) return;
+    setLoading(true);
+    if (manual) setTrains({ uptown: [], downtown: [], alerts: [] });
+    
+    try {
+      const lineToFetch = (selectedStop.lines?.[0] && FEED_MAP[selectedStop.lines[0]]) || 'gtfs';
+      const [trainRes, alertsRes] = await Promise.all([
+        fetch(`${WORKER_URL}?type=trains&line=${lineToFetch}`).catch(() => ({ ok: false })),
+        fetch(`${WORKER_URL}?type=alerts`).catch(() => ({ ok: false }))
+      ]);
+
+      if (!trainRes.ok || !alertsRes.ok) throw new Error("Sync Pending");
+      
+      const trainBuffer = await trainRes.arrayBuffer();
+      const alertsBuffer = await alertsRes.arrayBuffer();
+      
+      const trainFeed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
+        new Uint8Array(trainBuffer)
+      );
+      const alertsFeed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
+        new Uint8Array(alertsBuffer)
+      );
+
+      const trainData = trainFeed.toJSON();
+      const alertsData = alertsFeed.toJSON();
+
+      const parseFeed = (data, dir) => {
+        const stationId = (selectedStop.id || '') + dir;
+        const arrivals = [];
+        (data.entity || []).forEach(entity => {
+          if (entity.tripUpdate && entity.tripUpdate.stopTimeUpdate) {
+            const update = entity.tripUpdate.stopTimeUpdate.find(u => u.stopId === stationId);
+            if (update && update.arrival) {
+              const mins = (update.arrival.time - Math.floor(Date.now() / 1000)) / 60;
+              if (mins > -1) {
+                arrivals.push({
+                  id: entity.id,
+                  line: entity.tripUpdate.trip.routeId,
+                  dest: getTerminal(entity.tripUpdate.trip.routeId, dir),
+                  mins: mins,
+                  delayed: entity.tripUpdate.delay > 60
+                });
+              }
+            }
+          }
+        });
+        return arrivals.sort((a, b) => a.mins - b.mins);
+      };
+
+      setTrains({
+        uptown: parseFeed(trainData, 'N'),
+        downtown: parseFeed(trainData, 'S'),
+        alerts: (alertsData.entity || []).map(e => ({
+          id: e.id,
+          lines: (e.alert?.informedEntity || []).map(ie => ie.routeId),
+          description: e.alert?.headerText?.translation?.[0]?.text || "Service Update"
