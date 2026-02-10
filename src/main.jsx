@@ -114,7 +114,7 @@ const TrainCard = ({ t, index, isDashMode, alerts }) => {
             {isExpress ? 'Express' : 'Local'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontWeight: '700', fontSize: '18px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontWeight: '700', fontSize: '20px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {t.dest}
             </span>
             {hasIssue && <AlertTriangle size={14} style={{ color: '#f97316', marginLeft: '6px' }} />}
@@ -204,14 +204,25 @@ const App = () => {
         return result.sort((a, b) => Math.ceil(a.mins) - Math.ceil(b.mins));
       };
 
+      // Mock Alerts Logic (Injecting real disruptions randomly)
+      const possibleAlerts = [
+        "Signal problems are causing delays.",
+        "Expect delays due to track maintenance.",
+        "Trains are running local due to track work.",
+        "MTA confirms service is active on the line."
+      ];
+
       setTrains({
         uptown: generatePool('N'),
         downtown: generatePool('S'),
-        alerts: selectedStop.lines.map(line => ({
-          id: `alert-${line}`,
-          lines: [line],
-          description: `MTA confirms service is active on the ${line} line.`
-        }))
+        alerts: selectedStop.lines.map(line => {
+          const rawDesc = possibleAlerts[Math.floor(Math.random() * possibleAlerts.length)];
+          return {
+            id: `alert-${line}`,
+            lines: [line],
+            description: rawDesc.replace("the line", `the ${line} line`)
+          };
+        })
       });
       setLastUpdated(new Date());
 
