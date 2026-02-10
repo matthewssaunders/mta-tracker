@@ -356,8 +356,10 @@ const App = () => {
         </div>
       </footer>
       <style>{`
+        body, html { background-color: #000 !important; margin: 0; padding: 0; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
+        * { box-sizing: border-box; }
       `}</style>
     </div>
   );
