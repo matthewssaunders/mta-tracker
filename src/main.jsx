@@ -114,7 +114,7 @@ const TrainCard = ({ t, index, isDashMode, alerts }) => {
             {isExpress ? 'Express' : 'Local'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontWeight: '700', fontSize: '14px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontWeight: '700', fontSize: '18px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {t.dest}
             </span>
             {hasIssue && <AlertTriangle size={14} style={{ color: '#f97316', marginLeft: '6px' }} />}
@@ -298,18 +298,23 @@ const App = () => {
 
       <div style={styles.filterSection}>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {selectedStop.lines.map(line => (
-            <div key={line} 
-                 style={{ 
-                   width: '44px', height: '44px', borderRadius: '50%', backgroundColor: filterLines.includes(line) ? getLineColor(line) : '#222', 
-                   opacity: filterLines.includes(line) ? 1 : 0.3, border: filterLines.includes(line) ? 'none' : '1px solid #444', 
-                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: filterLines.includes(line) ? '#fff' : '#444', 
-                   fontSize: '22px', flexShrink: 0, cursor: 'pointer' 
-                 }} 
-                 onClick={() => setFilterLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line])}>
-              {line}
-            </div>
-          ))}
+          {selectedStop.lines.map(line => {
+            const bulletSize = isMobile ? 36 : 44;
+            const bulletFont = isMobile ? 18 : 22;
+            const active = filterLines.includes(line);
+            return (
+              <div key={line} 
+                   style={{ 
+                     width: `${bulletSize}px`, height: `${bulletSize}px`, borderRadius: '50%', backgroundColor: active ? getLineColor(line) : '#222', 
+                     opacity: active ? 1 : 0.3, border: active ? 'none' : '1px solid #444', 
+                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: active ? '#fff' : '#444', 
+                     fontSize: `${bulletFont}px`, flexShrink: 0, cursor: 'pointer' 
+                   }} 
+                   onClick={() => setFilterLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line])}>
+                {line}
+              </div>
+            );
+          })}
         </div>
         <div style={styles.filterActions}>
           <button style={styles.actionBtn()} onClick={() => setFilterLines(selectedStop.lines)}>All</button>
