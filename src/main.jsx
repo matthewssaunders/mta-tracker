@@ -95,6 +95,31 @@ const formatArrivalTime = (mins) => {
   });
 };
 
+const formatAlertTime = (timestamp) => {
+  if (!timestamp) return 'Just now';
+  const date = new Date(timestamp * 1000);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const isAlertActive = (alert) => {
+  if (!alert.activePeriod || alert.activePeriod.length === 0) return true;
+  
+  const now = Math.floor(Date.now() / 1000);
+  return alert.activePeriod.some(period => {
+    const start = period.start || 0;
+    const end = period.end || Infinity;
+    return now >= start && now <= end;
+  });
+};
+
 const TrainCard = ({ t, index, isDashMode, alerts }) => {
   const hasIssue = (alerts || []).some(a => a.lines?.includes(t.line) && !a.description.includes("MTA confirms service is active"));
   const isExpress = EXPRESS_LINES.includes(t.line);
@@ -229,8 +254,10 @@ const App = () => {
         downtown: parseFeed(trainData, 'S'),
         alerts: (alertsData.entity || []).map(e => ({
           id: e.id,
-          lines: (e.alert?.informedEntity || []).map(ie => ie.routeId),
-          description: e.alert?.headerText?.translation?.[0]?.text || "Service Update"
+          lines: (e.alert?.informedEntity || []).map(ie => ie.routeId).filter(Boolean),
+          description: e.alert?.headerText?.translation?.[0]?.text || "Service Update",
+          timestamp: alertsData.header?.timestamp,
+          activePeriod: e.alert?.activePeriod || []
         }))
       });
       setLastUpdated(new Date());
@@ -257,8 +284,11 @@ const App = () => {
         uptown: generatePool('N'),
         downtown: generatePool('S'),
         alerts: (selectedStop.lines || []).map(line => ({
-          id: `alert-${line}`, lines: [line],
-          description: Math.random() > 0.8 ? `Service disruption on ${line} line.` : `MTA confirms service is active on the ${line} line.`
+          id: `alert-${line}`, 
+          lines: [line],
+          description: Math.random() > 0.8 ? `Service disruption on ${line} line.` : `MTA confirms service is active on the ${line} line.`,
+          timestamp: Math.floor(Date.now() / 1000),
+          activePeriod: []
         }))
       });
       setLastUpdated(new Date());
@@ -281,13 +311,27 @@ const App = () => {
       .slice(0, 10);
   }, [trains, filterLines, direction]);
   
-  const filteredAlerts = useMemo(() => 
-    (trains.alerts || []).filter(a => 
-      a.lines && a.lines.some(l => filterLines.includes(l)) && 
-      !a.description.includes("MTA confirms service is active")
-    ),
-    [trains.alerts, filterLines]
-  );
+  const organizedAlerts = useMemo(() => {
+    const activeAlerts = (trains.alerts || []).filter(a => 
+      a.lines && 
+      a.lines.length > 0 &&
+      a.lines.some(l => filterLines.includes(l)) && 
+      !a.description.includes("MTA confirms service is active") &&
+      isAlertActive(a)
+    );
+
+    const byLine = {};
+    activeAlerts.forEach(alert => {
+      alert.lines.forEach(line => {
+        if (filterLines.includes(line)) {
+          if (!byLine[line]) byLine[line] = [];
+          byLine[line].push(alert);
+        }
+      });
+    });
+
+    return Object.entries(byLine).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [trains.alerts, filterLines]);
 
   const styles = {
     wrapper: { padding: isMobile ? '10px' : '15px', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' },
@@ -359,15 +403,30 @@ const App = () => {
         </div>
       </div>
 
-      {filteredAlerts.length > 0 && (
+      {organizedAlerts.length > 0 && (
         <div style={{ marginTop: '10px', borderTop: '1px solid #111', paddingTop: '20px', paddingBottom: '80px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
             <AlertTriangle size={14} style={{ color: '#f97316' }} />
-            <span style={{ fontSize: '10px', color: '#f97316', fontWeight: '900', textTransform: 'uppercase' }}>Notifications</span>
+            <span style={{ fontSize: '10px', color: '#f97316', fontWeight: '900', textTransform: 'uppercase' }}>Active Notifications</span>
           </div>
-          {filteredAlerts.map(a => (
-            <div key={a.id} style={{ fontSize: '12px', color: '#888', marginBottom: '8px', padding: '12px', backgroundColor: '#111', borderRadius: '8px', borderLeft: `4px solid ${getLineColor(a.lines?.[0] || '1')}` }}>
-              <strong>{(a.lines || []).join('/')}:</strong> {a.description}
+          {organizedAlerts.map(([line, alerts]) => (
+            <div key={line} style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: getLineColor(line), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#fff', fontSize: '14px' }}>
+                  {line}
+                </div>
+                <span style={{ fontSize: '11px', color: '#999', fontWeight: '800', textTransform: 'uppercase' }}>
+                  {alerts.length} {alerts.length === 1 ? 'Alert' : 'Alerts'}
+                </span>
+              </div>
+              {alerts.map(alert => (
+                <div key={alert.id} style={{ fontSize: '12px', color: '#ccc', marginBottom: '8px', marginLeft: '36px', padding: '10px 12px', backgroundColor: '#0a0a0a', borderRadius: '6px', borderLeft: `3px solid ${getLineColor(line)}` }}>
+                  <div style={{ marginBottom: '4px' }}>{alert.description}</div>
+                  <div style={{ fontSize: '10px', color: '#666', fontWeight: '600' }}>
+                    {formatAlertTime(alert.timestamp)}
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>
