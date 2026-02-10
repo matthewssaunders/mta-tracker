@@ -265,13 +265,13 @@ const App = () => {
   );
 
   const styles = {
-    wrapper: { padding: '15px', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' },
-    topNav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px' },
-    select: { width: '360px', maxWidth: '100%', backgroundColor: '#111', border: '1px solid #333', color: '#fff', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', outline: 'none' },
-    directionToggle: { display: 'flex', backgroundColor: '#111', borderRadius: '8px', padding: '4px', width: 'fit-content' },
-    toggleBtn: (active) => ({ padding: '10px 24px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', backgroundColor: active ? '#fff' : 'transparent', color: active ? '#000' : '#666', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }),
-    filterSection: { marginBottom: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' },
-    filterActions: { display: 'flex', gap: '15px', marginLeft: '8px', borderLeft: '1px solid #222', paddingLeft: '15px', alignItems: 'center' },
+    wrapper: { padding: isMobile ? '10px' : '15px', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#000', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' },
+    topNav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px', flexWrap: isMobile ? 'wrap' : 'nowrap' },
+    select: { width: '100%', maxWidth: '360px', backgroundColor: '#111', border: '1px solid #333', color: '#fff', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', outline: 'none' },
+    directionToggle: { display: 'flex', backgroundColor: '#111', borderRadius: '8px', padding: '4px', width: isMobile ? '100%' : 'fit-content' },
+    toggleBtn: (active) => ({ flex: isMobile ? 1 : 'none', padding: isMobile ? '10px 12px' : '10px 24px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', backgroundColor: active ? '#fff' : 'transparent', color: active ? '#000' : '#666', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', whiteSpace: 'nowrap' }),
+    filterSection: { marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' },
+    filterActions: { display: 'flex', gap: '12px', marginLeft: isMobile ? '0' : '8px', borderLeft: isMobile ? 'none' : '1px solid #222', paddingLeft: isMobile ? '0' : '15px', alignItems: 'center', width: isMobile ? '100%' : 'auto' },
     actionBtn: (active = false) => ({ background: active ? '#22c55e' : 'none', border: 'none', color: active ? '#fff' : '#666', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', cursor: 'pointer', padding: active ? '6px 12px' : '4px 0', borderRadius: '6px' }),
     boardGrid: { display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '12px', marginBottom: '30px' },
     gridColumn: { flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' },
@@ -281,7 +281,7 @@ const App = () => {
   return (
     <div style={styles.wrapper}>
       <div style={styles.topNav}>
-        <div style={{ flex: '0 0 auto' }}>
+        <div style={{ flex: isMobile ? '1 1 100%' : '0 1 auto' }}>
           <select style={styles.select} value={selectedStop?.id || ''} onChange={(e) => setSelectedStop(STATIONS.find(s => s.id === e.target.value))}>
             {STATIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -297,18 +297,20 @@ const App = () => {
       </div>
 
       <div style={styles.filterSection}>
-        {selectedStop.lines.map(line => (
-          <div key={line} 
-               style={{ 
-                 width: '44px', height: '44px', borderRadius: '50%', backgroundColor: filterLines.includes(line) ? getLineColor(line) : '#222', 
-                 opacity: filterLines.includes(line) ? 1 : 0.3, border: filterLines.includes(line) ? 'none' : '1px solid #444', 
-                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: filterLines.includes(line) ? '#fff' : '#444', 
-                 fontSize: '22px', flexShrink: 0, cursor: 'pointer' 
-               }} 
-               onClick={() => setFilterLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line])}>
-            {line}
-          </div>
-        ))}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {selectedStop.lines.map(line => (
+            <div key={line} 
+                 style={{ 
+                   width: '44px', height: '44px', borderRadius: '50%', backgroundColor: filterLines.includes(line) ? getLineColor(line) : '#222', 
+                   opacity: filterLines.includes(line) ? 1 : 0.3, border: filterLines.includes(line) ? 'none' : '1px solid #444', 
+                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: filterLines.includes(line) ? '#fff' : '#444', 
+                   fontSize: '22px', flexShrink: 0, cursor: 'pointer' 
+                 }} 
+                 onClick={() => setFilterLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line])}>
+              {line}
+            </div>
+          ))}
+        </div>
         <div style={styles.filterActions}>
           <button style={styles.actionBtn()} onClick={() => setFilterLines(selectedStop.lines)}>All</button>
           <button style={styles.actionBtn()} onClick={() => setFilterLines([])}>Clear</button>
