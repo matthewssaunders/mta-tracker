@@ -116,9 +116,14 @@ const App = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const fetchRealtimeData = async () => {
-    if (!selectedStop) return;
+  const fetchRealtimeData = async (manual = false) => {
+    if (!selectedStop || loading) return;
     setLoading(true);
+    
+    // If manual refresh, clear results immediately to avoid the "jump"
+    if (manual) {
+      setTrains({ uptown: [], downtown: [], alerts: [] });
+    }
     
     try {
       const lineToFetch = (selectedStop.lines && selectedStop.lines.length > 0 && FEED_MAP[selectedStop.lines[0]]) || 'gtfs';
@@ -128,19 +133,29 @@ const App = () => {
       const [trainRes, alertsRes] = await Promise.all([trainPromise, alertsPromise]);
       if (!trainRes.ok || !alertsRes.ok) throw new Error("Worker Connection Failed");
       
-      const mockTrains = (dir) => Array.from({ length: 35 }, (_, i) => {
-        const line = selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)];
-        return {
-          id: `${dir}-${i}-${Math.random()}`,
-          line: line,
-          dest: getTerminal(line, dir),
-          // Store raw mins, but we will round up during display/sorting logic
-          mins: (i * 1.5) + Math.floor(Math.random() * 5) + 1,
-          delayed: Math.random() > 0.90
-        };
-      }).sort((a, b) => Math.ceil(a.mins) - Math.ceil(b.mins));
+      const mockTrains = (dir) => {
+        const result = [];
+        const usedTimes = new Set(); // Prevent duplicates at the same minute for the same line
+        
+        for (let i = 0; i < 40; i++) {
+          const line = selectedStop.lines[Math.floor(Math.random() * selectedStop.lines.length)];
+          const mins = (i * 1) + Math.floor(Math.random() * 3) + 1;
+          const key = `${line}-${Math.ceil(mins)}`;
+          
+          if (!usedTimes.has(key)) {
+            result.push({
+              id: `${dir}-${i}-${Math.random()}`,
+              line: line,
+              dest: getTerminal(line, dir),
+              mins: mins,
+              delayed: Math.random() > 0.95
+            });
+            usedTimes.add(key);
+          }
+        }
+        return result.sort((a, b) => Math.ceil(a.mins) - Math.ceil(b.mins));
+      };
 
-      // Interpret alerts
       const realAlerts = selectedStop.lines.map(line => ({
         id: `alert-${line}`,
         lines: [line],
@@ -157,16 +172,26 @@ const App = () => {
 
     } catch (e) {
       console.error(e);
-      const mockTrains = (dir) => Array.from({ length: 25 }, (_, i) => {
-        const line = selectedStop.lines[Math.floor(Math.random() * (selectedStop.lines?.length || 1))];
-        return {
-          id: `mock-${dir}-${i}`,
-          line: line,
-          dest: getTerminal(line, dir),
-          mins: (i * 4) + 2,
-          delayed: false
-        };
-      });
+      const mockTrains = (dir) => {
+        const result = [];
+        const usedTimes = new Set();
+        for (let i = 0; i < 30; i++) {
+          const line = selectedStop.lines[Math.floor(Math.random() * (selectedStop.lines?.length || 1))];
+          const mins = (i * 2) + Math.floor(Math.random() * 4) + 1;
+          const key = `${line}-${Math.ceil(mins)}`;
+          if (!usedTimes.has(key)) {
+            result.push({
+              id: `mock-${dir}-${i}-${Math.random()}`,
+              line: line,
+              dest: getTerminal(line, dir),
+              mins: mins,
+              delayed: false
+            });
+            usedTimes.add(key);
+          }
+        }
+        return result.sort((a, b) => Math.ceil(a.mins) - Math.ceil(b.mins));
+      };
       setTrains({ 
         uptown: mockTrains('N'), 
         downtown: mockTrains('S'), 
@@ -179,7 +204,7 @@ const App = () => {
 
   useEffect(() => {
     fetchRealtimeData();
-    const timer = setInterval(fetchRealtimeData, 30000);
+    const timer = setInterval(() => fetchRealtimeData(), 30000);
     return () => clearInterval(timer);
   }, [selectedStop]);
 
@@ -208,7 +233,6 @@ const App = () => {
   );
 
   const formatArrivalTime = (mins) => {
-    // Rounding up the minutes for the clock time to match the display
     const roundedMins = Math.ceil(mins);
     const arrivalDate = new Date(Date.now() + roundedMins * 60000);
     return arrivalDate.toLocaleTimeString('en-US', {
@@ -262,7 +286,7 @@ const App = () => {
             <ArrowDownCircle size={14} /> Downtown
           </button>
         </div>
-        <button onClick={fetchRealtimeData} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer' }}>
+        <button onClick={() => fetchRealtimeData(true)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer' }}>
           <RefreshCw size={20} className={loading ? 'spin' : ''} />
         </button>
       </div>
@@ -310,7 +334,7 @@ const App = () => {
               </div>
             </div>
           );
-        }) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px', textAlign: 'center', gridColumn: 'span 2' }}>No upcoming trains</div>}
+        }) : <div style={{ color: '#333', fontStyle: 'italic', padding: '20px', textAlign: 'center', gridColumn: 'span 2' }}>{loading ? 'Refreshing Feed...' : 'No upcoming trains'}</div>}
       </div>
 
       {filteredAlerts.length > 0 && (
