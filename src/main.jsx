@@ -105,6 +105,14 @@ const TrainCard = ({ t, index, isDashMode, alerts }) => {
   const dashTime = roundedMins - WALK_BUFFER;
   const isTooLate = dashTime < 0;
 
+  const TrainCard = ({ t, index, isDashMode, alerts }) => {
+  const hasIssue = (alerts || []).some(a => a.lines?.includes(t.line) && !a.description.includes("MTA confirms service is active"));
+  const isExpress = EXPRESS_LINES.includes(t.line);
+  const roundedMins = Math.ceil(t.mins);
+  
+  const dashTime = roundedMins - WALK_BUFFER;
+  const isTooLate = dashTime < 0;
+
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111', 
@@ -127,4 +135,31 @@ const TrainCard = ({ t, index, isDashMode, alerts }) => {
               {t.dest}
             </span>
             {hasIssue && <AlertTriangle size={14} style={{ color: '#f97316', marginLeft: '6px' }} />}
-          </
+          </div>
+          {isDashMode ? (
+            <div style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginTop: '2px', color: isTooLate ? '#ef4444' : '#22c55e' }}>
+              {isTooLate ? 'Too Late' : dashTime === 0 ? 'Leave Now!' : `${dashTime}m until dash`}
+            </div>
+          ) : (
+            <>
+              {roundedMins < 4 ? (
+                <div style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginTop: '2px', color: '#22c55e' }}>Arriving Soon</div>
+              ) : t.delayed ? (
+                <div style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginTop: '2px', color: '#f97316' }}>Delayed</div>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '10px' }}>
+        <span style={{ fontSize: '22px', fontWeight: '900', lineHeight: 1, color: (isDashMode && isTooLate) ? '#444' : '#fff' }}>
+          {roundedMins}
+        </span>
+        <span style={{ fontSize: '8px', color: '#666', fontWeight: 'bold', display: 'block' }}>MINS</span>
+        <span style={{ fontSize: '10px', color: '#999', fontWeight: 'bold', display: 'block', marginTop: '2px' }}>
+          {formatArrivalTime(t.mins)}
+        </span>
+      </div>
+    </div>
+  );
+};
