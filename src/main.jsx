@@ -121,7 +121,12 @@ const isAlertActive = (alert) => {
 };
 
 const TrainCard = ({ t, index, isDashMode, alerts }) => {
-  const hasIssue = (alerts || []).some(a => a.lines?.includes(t.line) && !a.description.includes("MTA confirms service is active"));
+  // FIX #1: Use the same active alert filtering logic
+  const hasIssue = (alerts || []).some(a => 
+    a.lines?.includes(t.line) && 
+    !a.description.includes("MTA confirms service is active") &&
+    isAlertActive(a)
+  );
   const isExpress = EXPRESS_LINES.includes(t.line);
   const roundedMins = Math.ceil(t.mins);
   
@@ -205,25 +210,36 @@ const App = () => {
     if (manual) setTrains({ uptown: [], downtown: [], alerts: [] });
     
     try {
-      const lineToFetch = (selectedStop.lines?.[0] && FEED_MAP[selectedStop.lines[0]]) || 'gtfs';
-      const [trainRes, alertsRes] = await Promise.all([
-        fetch(`${WORKER_URL}?type=trains&line=${lineToFetch}`).catch(() => ({ ok: false })),
-        fetch(`${WORKER_URL}?type=alerts`).catch(() => ({ ok: false }))
+      // FIX #2: Get unique feeds needed for all lines at this station
+      const uniqueFeeds = [...new Set(selectedStop.lines.map(line => FEED_MAP[line]).filter(Boolean))];
+      
+      // Fetch all required feeds
+      const trainPromises = uniqueFeeds.map(feed => 
+        fetch(`${WORKER_URL}?type=trains&line=${feed}`).catch(() => ({ ok: false }))
+      );
+      
+      const [alertsRes, ...trainResponses] = await Promise.all([
+        fetch(`${WORKER_URL}?type=alerts`).catch(() => ({ ok: false })),
+        ...trainPromises
       ]);
 
-      if (!trainRes.ok || !alertsRes.ok) throw new Error("Sync Pending");
+      if (!alertsRes.ok || trainResponses.some(r => !r.ok)) throw new Error("Sync Pending");
       
-      const trainBuffer = await trainRes.arrayBuffer();
+      // Parse all train feeds
+      const trainBuffers = await Promise.all(trainResponses.map(r => r.arrayBuffer()));
       const alertsBuffer = await alertsRes.arrayBuffer();
       
-      const trainFeed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
-        new Uint8Array(trainBuffer)
+      const trainFeeds = trainBuffers.map(buffer => 
+        GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(new Uint8Array(buffer))
       );
       const alertsFeed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
         new Uint8Array(alertsBuffer)
       );
 
-      const trainData = trainFeed.toJSON();
+      // Combine all train data
+      const combinedTrainData = {
+        entity: trainFeeds.flatMap(feed => feed.toJSON().entity || [])
+      };
       const alertsData = alertsFeed.toJSON();
 
       const parseFeed = (data, dir) => {
@@ -250,8 +266,8 @@ const App = () => {
       };
 
       setTrains({
-        uptown: parseFeed(trainData, 'N'),
-        downtown: parseFeed(trainData, 'S'),
+        uptown: parseFeed(combinedTrainData, 'N'),
+        downtown: parseFeed(combinedTrainData, 'S'),
         alerts: (alertsData.entity || []).map(e => ({
           id: e.id,
           lines: (e.alert?.informedEntity || []).map(ie => ie.routeId).filter(Boolean),
